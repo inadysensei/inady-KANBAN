@@ -1,0 +1,30 @@
+# dependencies
+/node_modules
+
+# next.js (covers .next and the .next-stale-* / .next.stale.* dirs Next leaves behind)
+/.next*
+/out
+next-env.d.ts
+*.tsbuildinfo
+
+# sqlite data (the db files; keep the dir via data/.gitkeep)
+/data/*.db
+/data/*.db-shm
+/data/*.db-wal
+/data/live-agent-pids.json
+
+# personal list of selectable working dirs (absolute paths); ship the example
+/data/working-dirs.json
+
+# misc
+.DS_Store
+*.log
+.env*.local
+
+# Claude Code: share agents/commands with the team; ignore local/personal bits
+/.claude/settings.local.json
+/.claude/.plans/
+
+# env files (covers .env, .env.local, .env.production, … but keep an example)
+.env*
+!.env.example
