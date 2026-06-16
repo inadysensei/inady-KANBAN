@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  type CollisionDetection,
   DndContext,
   type DragEndEvent,
   KeyboardSensor,
   PointerSensor,
   closestCorners,
+  pointerWithin,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -26,6 +28,24 @@ import { STATUS_LABELS } from "@/lib/ticket-display";
 import type { Ticket } from "@/db/schema";
 import { TICKET_STATUSES } from "@/db/schema";
 import Column from "./Column";
+
+/**
+ * Prefer the droppable the pointer is actually inside (`pointerWithin`) so a
+ * short or empty column — WIP, which is often empty — is a reliable drop target
+ * instead of snapping to a taller neighbor's nearest corner. `closestCorners`
+ * alone resolved a drop *aimed at WIP* onto the adjacent (taller) Done column,
+ * which silently kills the ticket's agents — a destructive misfire. Fall back to
+ * `closestCorners` when there's no pointer (KeyboardSensor) or the pointer is
+ * outside every column. `pointerWithin` sorts the droppables the pointer is
+ * inside by mean distance to their corners, so a hovered card's small rect
+ * outranks its enclosing column → within-column ordering still works.
+ */
+const collisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+  return pointerCollisions.length > 0
+    ? pointerCollisions
+    : closestCorners(args);
+};
 
 export default function Board({
   tickets,
@@ -120,7 +140,7 @@ export default function Board({
         // triggers a hydration mismatch.
         id="board-dnd"
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collisionDetection}
         onDragEnd={onDragEnd}
       >
         {dragError && (

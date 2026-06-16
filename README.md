@@ -1,76 +1,59 @@
 # inady KANBAN
 
-> **Source-available, noncommercial.** Licensed under the [PolyForm Noncommercial
-> License 1.0.0](LICENSE): free to use, modify, and share for any noncommercial
-> purpose; commercial use is not granted. Because it restricts commercial use,
-> this is **not** an OSI "open source" license — see [License](#license).
+> **Source-available · noncommercial.** Free to use, modify, and share for any
+> noncommercial purpose under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+> Commercial use is not granted — and because of that it is **not** an OSI
+> "open source" license. See [License](#license).
 
-A localhost, single-user Kanban board that drives the **Cursor CLI**
-(`cursor-agent`) or the **Claude CLI** (`claude`) from the browser, chosen per
-session. Tickets flow through **To Do → Doing → WIP → Done**. Starting an
-agent on a ticket auto-moves it to **Doing**; **WIP** is a parking lot for items
-you want to set aside, and resuming work on a WIP ticket moves it back to
-**Doing** automatically. You drag a ticket to **Done** manually when satisfied.
+A Kanban board you run on your own machine that lets you start and watch
+**Cursor** and **Claude** coding-agent CLIs straight from your browser. Each card
+is a task; you move it across **To Do → Doing → WIP → Done** as the work
+progresses, and each card can run real agent sessions in a live terminal.
 
-Each ticket can hold multiple agent sessions. A session runs the chosen CLI
-inside a server-side PTY and streams to an in-browser terminal (xterm.js) over a
-WebSocket.
+![](/docs/board.svg)
 
-## Requirements
+## What it does
 
-- Node.js (tested on v25; native deps `better-sqlite3` / `node-pty` compile from
-  source if no prebuild is available — Xcode Command Line Tools required on macOS).
-- At least one of the agent CLIs installed, on `PATH`, and logged in (you choose
-  which to use per session):
-  - **Cursor** — [`cursor-agent`](https://docs.cursor.com/); log in with
-    `cursor-agent login`.
-  - **Claude** — [`claude`](https://docs.claude.com/en/docs/claude-code/overview);
-    log in by running `claude` once and following the prompts.
+- 🧑‍💻 **Run agents from a board** — start a `cursor-agent` or `claude` session on any card; it runs in a real terminal right in your browser.
+- 🗂️ **Kanban flow** — starting an agent moves a card to **Doing**; **WIP** is a parking lot for things you set aside; you drag to **Done** when you're happy.
+- 🧵 **Many sessions per card, always live** — run several agents per task and reconnect whenever; sessions keep running in the background even if you close the tab.
+- 🟢 **See who needs you** — at a glance, tell whether an agent is **working** or **waiting for your input** (with optional hooks).
+- 🤖 **Agents can manage the board** — a built-in MCP server lets an agent create and update tickets itself.
+- 🔒 **Local & private** — one user, no login, all data in a local SQLite file on your machine.
 
-## Setup
+## Quick start
+
+You need **Node.js** and at least one agent CLI, installed and logged in:
+
+| CLI | Install | Log in |
+|---|---|---|
+| **Cursor** | [`cursor-agent`](https://docs.cursor.com/) | `cursor-agent login` |
+| **Claude** | [`claude`](https://docs.claude.com/en/docs/claude-code/overview) | run `claude` once and follow the prompts |
+
+> 💡 On macOS the native modules (`better-sqlite3`, `node-pty`) build from source, so you may need the Xcode Command Line Tools.
 
 ```bash
 npm install
-npm run db:push        # create tables in data/kanban.db (drizzle-kit push)
-npm run seed           # optional: insert one sample ticket
-npm run dev            # custom server (Next + WebSocket) on http://localhost:7373
+npm run db:push   # create the local database (data/kanban.db)
+npm run dev       # start the app
 ```
 
-Inspect the DB:
+Now open **http://localhost:7373**. (Optional: `npm run seed` adds one sample ticket to get you started.)
 
-```bash
-npm run db:studio      # drizzle-kit studio
-```
+## Using the board
 
-> **Upgrading an existing DB:** there are no migration files, so `db:push` is the
-> only upgrade path. The current `activity` column is nullable, so `db:push` adds
-> it cleanly. Watch out, though: for a *non-null* column with existing rows,
-> `db:push` may offer a **destructive "truncate"** prompt instead of an `ALTER` —
-> don't accept it; abort and add the column by hand, e.g.
-> `sqlite3 data/kanban.db 'ALTER TABLE agent_sessions ADD COLUMN activity text;'`.
+1. **Add a repository** — open **Settings → Repositories** and add the folder your agents should work in (type a path, or **Browse…** on macOS). You need at least one before you can create a ticket.
+2. **Create a ticket** — click **New ticket**, give it a title, choose the repository, and describe what you want done.
+3. **Start an agent** — on the ticket, start a session and pick **Cursor** or **Claude**. The ticket moves to **Doing**, a terminal opens, and you chat with the agent and approve its actions there.
+4. **Park or finish** — drag a ticket to **WIP** to set it aside, or to **Done** when it's complete. (Re-opening a parked ticket and typing to its agent pulls it back into Doing automatically.)
+5. **Open in your editor** — each ticket has an **Open with** button that launches its folder in your editor.
 
-### Working directories (repositories)
+<details>
+<summary><b>Repositories & editors — a few details</b></summary>
 
-The **New ticket** form picks a working directory from a list you manage in
-**Settings → Repositories**, rather than typing a path each time. Add a repo by
-either typing an absolute path or clicking **Browse…** to pick a folder from the
-macOS native chooser (other platforms: type the path). Until at least one repo
-exists, the New ticket form blocks creation and links you to Settings.
+**Repositories** live in the database (the `repositories` table), not a config file. A legacy `data/working-dirs.json` (see `data/working-dirs.example.json`) is imported once on first boot, then ignored — manage repos in Settings from then on.
 
-The list lives in SQLite (the `repositories` table), not a config file. The
-legacy `data/working-dirs.json` (a JSON array of absolute paths; see
-`data/working-dirs.example.json`) is **imported once at first boot** into that
-table, after which it's ignored — manage repos in Settings from then on.
-
-### Open with (editors)
-
-A ticket's detail page has an **Open with** split button that launches the
-ticket's working directory in an editor: the primary button uses your default
-editor; the **▾** caret lists the rest. Editors are managed in **Settings →
-Open-with editors** (add / edit / delete, and pick exactly one default).
-
-Each editor is a shell command run with its working directory set to the
-ticket's folder, so `.` resolves there. Defaults seeded on first boot:
+**Editors** are managed in **Settings → Open-with editors** (add / edit / delete, with exactly one default). Each is a shell command run with its working directory set to the ticket's folder, so `.` resolves there. Seeded defaults:
 
 | Editor | Command |
 |---|---|
@@ -78,130 +61,23 @@ ticket's folder, so `.` resolves there. Defaults seeded on first boot:
 | VS Code | `code .` |
 | Emacs | `emacs .` |
 
-The command's binary must be on the **server's** `PATH`. Launch is best-effort
-(detached, output ignored) — a bad command fails silently rather than erroring.
+The command's binary must be on the **server's** `PATH`. Launch is best-effort (detached) — a bad command just fails silently.
 
-## How it works
+</details>
 
-- **Custom server** (`server.ts`, run via `tsx`): Next.js App Router request
-  handler + a `ws` WebSocket server sharing one HTTP port. Next route handlers
-  can't do WebSocket upgrades, hence the custom server. Run with `npm run dev`,
-  **not** `next dev`.
-- **WebSocket** `/ws/terminal/:sessionDbId`: the only Node network boundary. The
-  client sends `start` / `stdin` / `resize` / `kill`; the server replies with
-  `ready` / `stdout` / `exit` / `error`. Non-terminal upgrades (Next HMR) are
-  forwarded to Next so fast-refresh keeps working.
-- **PTY registry** (`src/lib/pty-registry.ts`): in-process `Map` of live PTYs.
-  PTY exit → updates `agent_sessions.status`. WS close → kills the PTY
-  (SIGTERM, then SIGKILL after 2s). On boot, leftover `running` rows are swept
-  to `error`.
-- **DB**: SQLite (`data/kanban.db`) via better-sqlite3 + Drizzle. Foreign keys
-  are enabled so deleting a ticket cascades its sessions.
+## Working vs. waiting for you
 
-### Command shapes
+A running agent looks the same whether it's hard at work or sitting waiting for your reply. If you add a couple of small **hooks** to Cursor/Claude, the board can tell the difference and show it on the card:
 
-Every session is an **interactive TUI** — there is no headless/one-shot mode. The
-conversation id is pre-issued before the PTY launches, so the session always has
-an id to attach to. The ticket title + description are wrapped as background and
-prepended to your prompt (see `src/lib/prompt.ts`); on the initial launch that
-prompt is passed as a **positional argument** the TUI auto-submits.
+- 🟢 **working** — a spinner
+- 🟡 **your turn** — an amber badge, plus a desktop notification
 
-| CLI | New session | Resume |
-|---|---|---|
-| **Cursor** | `cursor-agent --resume <chat-id> "<prompt>"` | `cursor-agent --resume <chat-id>` |
-| **Claude** | `claude --session-id <id> [--model …] [--effort …] "<prompt>"` | `claude --resume <id>` |
+Without hooks you simply get a plain "running" dot — everything still works, the board just can't guess what the agent is doing. When the board launches an agent it sets two environment variables the hook reads — `INADY_KANBAN_SESSION_ID` and `INADY_KANBAN_URL` — and the hook POSTs back to report the state.
 
-For Cursor the chat UUID is pre-issued with `cursor-agent create-chat`; for Claude
-the UUID is generated locally and pinned with `--session-id` on first launch.
+<details>
+<summary><b>Hook setup — copy-paste for Claude & Cursor</b></summary>
 
-**Workspace trust & command approval.** Both CLIs keep **per-command approval on**
-(no `--force` / bypass flags), so you approve tool calls in the terminal. On an
-untrusted folder each CLI shows a one-time trust prompt; since a ticket points at
-your own repo, the server auto-accepts it once (`a` for Cursor, Enter for Claude),
-and trust persists per-workspace afterwards.
-
-## MCP server (tickets for coding agents)
-
-A local [MCP](https://modelcontextprotocol.io) server lets a coding agent
-(Cursor / Claude) create, update and read board tickets directly. It runs
-**locally with no authentication** (single user, localhost).
-
-```bash
-npm run mcp        # tsx mcp-server.ts — speaks MCP over stdio
-```
-
-It needs the board itself running (`npm run dev`) — the MCP server holds **no
-ticket logic of its own**. Each tool is a thin call against the board's own
-`/api/tickets` endpoints, which call the single source of truth in
-`src/lib/ticket-core.ts`. So the MCP, the HTTP API and the board UI all change
-tickets through one implementation; they can't drift apart. (Request/parse/error
-shaping lives in `src/lib/inady-kanban-mcp-client.ts`, unit-tested with `fetch`
-injected; `mcp-server.ts` only wires those calls to MCP tools.)
-
-**Tools:**
-
-| Tool | What it does |
-|---|---|
-| `inady_kanban_list_tickets` | List tickets, optionally filtered by `status` (`todo`/`doing`/`wip`/`done`) |
-| `inady_kanban_get_ticket` | Fetch one ticket by id |
-| `inady_kanban_create_ticket` | Create a `todo` ticket (`title` + absolute existing `workingDir` required; optional `description`, `memo`) |
-| `inady_kanban_update_ticket` | Update an existing ticket's `title` / `description` / `workingDir` |
-
-Edits made through the MCP don't `revalidatePath`, so an open board needs a
-reload to show them (same as the `POST /api/tickets` external-caller path).
-
-**Register it** (e.g. in your project's `.mcp.json` for Claude Code, or the
-equivalent Cursor MCP config). Run the command from this repo's root:
-
-```json
-{
-  "mcpServers": {
-    "inady-kanban": {
-      "command": "npx",
-      "args": ["tsx", "mcp-server.ts"],
-      "env": { "INADY_KANBAN_URL": "http://localhost:7373" }
-    }
-  }
-}
-```
-
-`INADY_KANBAN_URL` is optional — it defaults to the local server
-(`http://localhost:7373`, or `$PORT`).
-
-## Agent status: working vs. your turn (hooks)
-
-A live process alone can't tell **working** from **waiting for you**: an
-interactive TUI keeps running while it sits at its prompt. So the board reports
-the agent's activity through **hooks** the agent runs, which POST to this server:
-
-- **busy** → a spinner (the agent is actively working)
-- **awaiting** → an amber "your turn" badge + a desktop notification
-
-If you **don't** configure hooks, the board can't know which it is, so it falls
-back to the classic status dots — a green dot while running, red on error, etc.
-The spinner therefore only ever appears once a hook has confirmed "busy".
-
-When the board spawns an agent it injects two environment variables the hook can
-read:
-
-| Var | Value |
-|---|---|
-| `INADY_KANBAN_SESSION_ID` | this session's id (use it to identify the session) |
-| `INADY_KANBAN_URL` | this server's base URL, e.g. `http://localhost:7373` |
-
-The hook just POSTs (no body needed) to set the state:
-
-- **Working** → `POST $INADY_KANBAN_URL/api/agent-sessions/$INADY_KANBAN_SESSION_ID/activity/busy`
-- **Paused for you** → `POST $INADY_KANBAN_URL/api/agent-sessions/$INADY_KANBAN_SESSION_ID/activity/awaiting`
-
-The state resets automatically whenever a session starts or ends.
-
-### Claude
-
-Add this to your **user** settings (`~/.claude/settings.json`) so it applies to
-every repo, or to a project's `.claude/settings.json`. `SessionStart` +
-`UserPromptSubmit` mark the agent **busy** (so the spinner shows while it works);
-`Stop` (and optionally `Notification`) mark it **awaiting** you:
+**Claude** — add to your user settings (`~/.claude/settings.json`) or a project's `.claude/settings.json`:
 
 ```json
 {
@@ -222,16 +98,7 @@ every repo, or to a project's `.claude/settings.json`. `SessionStart` +
 }
 ```
 
-(`Notification` is optional — it covers permission prompts and idle waits. The
-`[ -n … ] || true` guard makes each hook a harmless no-op when Claude runs
-outside the board.)
-
-### Cursor
-
-Add this to your **user** hooks (`~/.cursor/hooks.json`) so it applies to every
-workspace, or to a project's `.cursor/hooks.json`. `sessionStart` +
-`beforeSubmitPrompt` mark the agent **busy** (so the spinner shows while it
-works); `stop` marks it **awaiting** you:
+**Cursor** — add to your user hooks (`~/.cursor/hooks.json`) or a project's `.cursor/hooks.json`:
 
 ```json
 {
@@ -250,41 +117,68 @@ works); `stop` marks it **awaiting** you:
 }
 ```
 
-Use user-level hooks for inady KANBAN: the board starts `cursor-agent` in each
-ticket's working directory, not in the inady KANBAN app repo. The `[ -n … ] || true`
-guard makes each hook a harmless no-op when `cursor-agent` runs outside the
-board. Cursor has no `Notification` hook — permission prompts won't flip the
-badge to "your turn" until `stop` fires.
+`SessionStart` / `UserPromptSubmit` mark the agent **busy**; `Stop` (and Claude's optional `Notification`) mark it **awaiting** you. The state resets whenever a session starts or ends. The `[ -n … ] || true` guard makes each hook a harmless no-op when the CLI runs outside the board, so it's safe to keep in your global config.
 
-### Browser notification badge
+</details>
 
-When an agent finishes, fails, or needs your input while the tab is in the
-background, `NotificationCenter` keeps an **unread count** and surfaces it
-everywhere a browser can show one:
+## Let agents manage the board (MCP)
 
-- the **favicon** (a red count bubble drawn onto the tab icon),
-- the **tab title** prefix (`(3) ● …`),
-- the **OS app badge** (`navigator.setAppBadge` — only visible for an installed
-  PWA; a harmless no-op in a plain tab), and
-- a red count on the bottom-right **bell**.
+Run a small [MCP](https://modelcontextprotocol.io) server so a coding agent can create, read, and update tickets itself:
 
-The count only accumulates while the tab is hidden and resets to zero the moment
-you focus/return to it. This is independent of desktop-notification permission —
-the badge shows even if you never grant notifications.
+```bash
+npm run mcp
+```
+
+It needs the board running (`npm run dev`) and talks to it over HTTP — it has **no database of its own**, so the board UI, its HTTP API, and the MCP all change tickets the same way. Tools: `inady_kanban_list_tickets`, `inady_kanban_get_ticket`, `inady_kanban_create_ticket`, `inady_kanban_update_ticket`.
+
+<details>
+<summary><b>Register it with Claude Code / Cursor</b></summary>
+
+Add to your project's `.mcp.json` (or the equivalent Cursor MCP config), run from this repo's root:
+
+```json
+{
+  "mcpServers": {
+    "inady-kanban": {
+      "command": "npx",
+      "args": ["tsx", "mcp-server.ts"],
+      "env": { "INADY_KANBAN_URL": "http://localhost:7373" }
+    }
+  }
+}
+```
+
+`INADY_KANBAN_URL` is optional — it defaults to the local server. Tickets changed through the MCP need a board reload to show up (same as any external change).
+
+</details>
+
+## How it works
+
+A custom **Next.js + WebSocket server** (`server.ts`) serves the board and streams each agent's terminal. Agents run in server-side **PTYs** piped to an in-browser terminal (xterm.js); data lives in **SQLite** via Drizzle. Every session is a normal **interactive** CLI run — there's no unattended/headless mode, so you always approve what the agent does. Configuration is optional (see [`.env.example`](.env.example)).
+
+<details>
+<summary><b>A little more detail</b></summary>
+
+- **Custom server** (`server.ts`, run via `tsx`): a Next.js App Router handler plus a `ws` WebSocket server on one port. Run it with `npm run dev`, **not** `next dev`.
+- **WebSocket** `/ws/terminal/:sessionId`: the client sends `start` / `stdin` / `resize` / `kill`; the server replies `ready` / `stdout` / `exit` / `error`. Closing the tab detaches but keeps the agent running; output is buffered and replayed when you reconnect.
+- **Sessions**: the conversation id is created before launch, so a card always has something to reattach to. New run: `cursor-agent --resume <id> "<prompt>"` / `claude --session-id <id> "<prompt>"`; resume: `--resume <id>`. On an untrusted folder the one-time trust prompt is auto-accepted (it's your own repo).
+- **Database**: SQLite at `data/kanban.db`. There are no migration files, so `db:push` is the upgrade path.
+
+> ⚠️ **Upgrading an existing DB:** for a new *non-null* column on a table with rows, `db:push` may offer a destructive **"truncate"** — don't accept it; abort and add the column by hand, e.g. `sqlite3 data/kanban.db 'ALTER TABLE agent_sessions ADD COLUMN activity text;'`.
+
+For the full architecture, see [`CLAUDE.md`](CLAUDE.md).
+
+</details>
 
 ## License
 
-**inady KANBAN** is **source-available** software, licensed under the
-[PolyForm Noncommercial License 1.0.0](LICENSE).
+**inady KANBAN** is **source-available** software under the
+[PolyForm Noncommercial License 1.0.0](LICENSE):
 
-- ✅ Free to use, modify, and share for any **noncommercial** purpose — personal
-  projects, hobby and amateur use, research, education, and noncommercial
-  organizations.
-- ❌ **Commercial use is not granted** by this license.
-- ℹ️ Because it restricts commercial use, this is **not** an OSI-approved
-  "open source" license.
+- ✅ Free for any **noncommercial** purpose — personal projects, hobby use, research, education, and noncommercial organizations.
+- ❌ **Commercial use is not granted.**
+- ℹ️ Because it restricts commercial use, this is **not** an OSI-approved "open source" license.
 
-For commercial licensing, contact the author
-([@inadysensei](https://github.com/inadysensei)).
+For commercial licensing, contact the author ([@inadysensei](https://github.com/inadysensei)).
 
 Copyright © 2026 inadysensei.
