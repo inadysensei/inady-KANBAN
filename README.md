@@ -1,10 +1,5 @@
 # inady KANBAN
 
-> **Source-available · noncommercial.** Free to use, modify, and share for any
-> noncommercial purpose under the [PolyForm Noncommercial License 1.0.0](LICENSE).
-> Commercial use is not granted — and because of that it is **not** an OSI
-> "open source" license. See [License](#license).
-
 A Kanban board you run on your own machine that lets you start and watch
 **Cursor** and **Claude** coding-agent CLIs straight from your browser. Each card
 is a task; you move it across **To Do → Doing → WIP → Done** as the work
@@ -180,11 +175,7 @@ For the full architecture, see [`CLAUDE.md`](CLAUDE.md).
 ## License
 
 **inady KANBAN** is **source-available** software under the
-[PolyForm Noncommercial License 1.0.0](LICENSE):
-
-- ✅ Free for any **noncommercial** purpose — personal projects, hobby use, research, education, and noncommercial organizations.
-- ❌ **Commercial use is not granted.**
-- ℹ️ Because it restricts commercial use, this is **not** an OSI-approved "open source" license.
+[PolyForm Noncommercial License 1.0.0](LICENSE)
 
 For commercial licensing, contact the author ([@inadysensei](https://github.com/inadysensei)).
 
