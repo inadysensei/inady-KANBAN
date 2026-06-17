@@ -7,11 +7,9 @@ const nextConfig = {
   // cleanup. React Strict Mode's dev-only double-invoke would double-spawn, so
   // disable it to keep dev behavior matching production.
   reactStrictMode: false,
-  // ESLint is run via `npm run lint`, not as a build gate, so a lint nit never
-  // blocks `next build`. Type errors still fail the build (we want that).
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  // Next 16 removed the `eslint` config option (and `next lint`) — linting is
+  // run standalone via `npm run lint` (eslint.config.mjs) and never gates the
+  // build. Type errors still fail the build (we want that).
 };
 
 export default nextConfig;

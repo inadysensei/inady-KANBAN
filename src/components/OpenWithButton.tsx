@@ -68,7 +68,7 @@ export default function OpenWithButton({
           disabled={pending}
           onClick={() => launch(defaultEditor.id)}
           title={`Open in ${defaultEditor.name} (${defaultEditor.command})`}
-          className="flex items-center gap-1.5 rounded-l-md border border-line-strong bg-surface px-2.5 py-1 text-xs font-medium text-fg transition-colors hover:bg-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-l-md border border-line-strong bg-surface px-2.5 py-1 text-xs font-medium text-fg transition-colors hover:bg-panel focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-50"
         >
           <FolderIcon size={ICON_SIZE_SM} />
           {pending ? "Opening…" : `Open with ${defaultEditor.name}`}
@@ -80,7 +80,7 @@ export default function OpenWithButton({
           aria-haspopup="menu"
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
-          className="-ml-px flex items-center justify-center rounded-r-md border border-line-strong bg-surface px-2 py-1 text-muted transition-colors hover:bg-panel hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-50"
+          className="-ml-px flex items-center justify-center rounded-r-md border border-line-strong bg-surface px-2 py-1 text-muted transition-colors hover:bg-panel hover:text-fg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-50"
         >
           <CaretIcon size={ICON_SIZE_SM} />
         </button>
@@ -102,7 +102,7 @@ export default function OpenWithButton({
                   type="button"
                   onClick={() => launch(editor.id)}
                   title={editor.command}
-                  className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-muted hover:bg-surface hover:text-fg focus-visible:outline-none focus-visible:bg-surface focus-visible:text-fg"
+                  className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-muted hover:bg-surface hover:text-fg focus-visible:outline-hidden focus-visible:bg-surface focus-visible:text-fg"
                 >
                   <span>{editor.name}</span>
                   {editor.isDefault && (

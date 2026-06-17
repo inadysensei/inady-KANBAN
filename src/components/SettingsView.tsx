@@ -305,7 +305,7 @@ function TeamTemplateEditor({
       <button
         type="button"
         onClick={() => setMembers([...members, ""])}
-        className="self-start rounded text-xs text-muted underline hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+        className="self-start rounded-sm text-xs text-muted underline hover:text-fg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/60"
       >
         Add member
       </button>
@@ -559,7 +559,7 @@ function TagEditor({
             value={swatchColor}
             onChange={(e) => setColor(e.target.value)}
             aria-label="Pick color"
-            className="h-9 w-12 shrink-0 cursor-pointer rounded border border-line-strong bg-surface"
+            className="h-9 w-12 shrink-0 cursor-pointer rounded-sm border border-line-strong bg-surface"
           />
           <input
             value={color}

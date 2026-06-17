@@ -25,7 +25,7 @@ export type ButtonVariant =
 export type ButtonSize = "sm" | "md";
 
 const BUTTON_BASE =
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-50 disabled:pointer-events-none";
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-50 disabled:pointer-events-none";
 
 const BUTTON_SIZE: Record<ButtonSize, string> = {
   sm: "gap-1.5 px-2.5 py-1 text-xs",
@@ -55,7 +55,7 @@ export function buttonClass(
 export type IconButtonTone = "default" | "danger" | "accent";
 
 const ICON_BUTTON_BASE =
-  "inline-flex items-center justify-center rounded-md border border-line text-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-50 disabled:pointer-events-none";
+  "inline-flex items-center justify-center rounded-md border border-line text-muted transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-50 disabled:pointer-events-none";
 
 const ICON_BUTTON_SIZE: Record<ButtonSize, string> = {
   sm: "h-7 w-7",
@@ -85,7 +85,7 @@ export function iconButtonClass(
 }
 
 const INPUT_BASE =
-  "w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-fg placeholder:text-faint transition-colors focus-visible:outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-50";
+  "w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-fg placeholder:text-faint transition-colors focus-visible:outline-hidden focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-50";
 
 /** Shared field treatment for inputs / textareas / selects. */
 export function inputClass(extra?: string): string {

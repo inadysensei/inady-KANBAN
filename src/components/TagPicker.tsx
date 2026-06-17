@@ -48,7 +48,7 @@ export default function TagPicker({
             type="button"
             aria-pressed={on}
             onClick={() => toggle(tag.id)}
-            className={`rounded-full transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${
+            className={`rounded-full transition-opacity focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/60 ${
               on ? "" : "opacity-40 hover:opacity-70"
             }`}
           >
