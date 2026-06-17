@@ -240,7 +240,7 @@ export default function NotificationCenter() {
       {unread > 0 && (
         <span
           aria-hidden="true"
-          className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold leading-none text-canvas"
+          className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold leading-none text-canvas"
         >
           {formatBadgeCount(unread)}
         </span>

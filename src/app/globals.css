@@ -1,6 +1,40 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@theme {
+  --color-canvas: rgb(var(--canvas));
+  --color-surface: rgb(var(--surface));
+  --color-card: rgb(var(--card));
+  --color-panel: rgb(var(--panel));
+  --color-line: rgb(var(--line));
+  --color-line-strong: rgb(var(--line-strong));
+  --color-fg: rgb(var(--fg));
+  --color-muted: rgb(var(--muted));
+  --color-faint: rgb(var(--faint));
+  --color-accent: rgb(var(--accent));
+  --color-accent-fg: rgb(var(--accent-fg));
+  --color-ok: rgb(var(--ok));
+  --color-warn: rgb(var(--warn));
+  --color-danger: rgb(var(--danger));
+  --color-idle: rgb(var(--idle));
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
 
 /* ──────────────────────────────────────────────────────────────────────────
    Design tokens — "Dark Agent Console".
@@ -66,10 +100,10 @@ body {
   @apply my-2 list-decimal pl-5;
 }
 .markdown code {
-  @apply rounded bg-panel px-1 py-0.5 font-mono text-xs text-fg;
+  @apply rounded-sm bg-panel px-1 py-0.5 font-mono text-xs text-fg;
 }
 .markdown pre {
-  @apply my-2 overflow-x-auto rounded border border-line bg-panel p-3 text-xs text-fg;
+  @apply my-2 overflow-x-auto rounded-sm border border-line bg-panel p-3 text-xs text-fg;
 }
 .markdown pre code {
   @apply bg-transparent p-0 text-fg;

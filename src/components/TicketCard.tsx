@@ -74,7 +74,7 @@ export default function TicketCard({
       <button
         type="button"
         aria-label={`Drag ${ticket.title}`}
-        className="mt-0.5 cursor-grab touch-none select-none rounded text-faint hover:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 active:cursor-grabbing"
+        className="mt-0.5 cursor-grab touch-none select-none rounded-sm text-faint hover:text-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/60 active:cursor-grabbing"
         {...attributes}
         {...listeners}
       >

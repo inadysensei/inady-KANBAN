@@ -17,7 +17,7 @@ npm run build          # next build
 npm run typecheck      # tsc --noEmit
 npm test               # vitest run (unit tests)
 npm run test:watch     # vitest watch — the Red/Green loop
-npm run lint           # next lint (build does NOT fail on lint — see next.config.mjs)
+npm run lint           # eslint . (flat config; Next 16 removed `next lint`, build never gates on lint)
 npm run db:studio      # drizzle-kit studio
 ```
 

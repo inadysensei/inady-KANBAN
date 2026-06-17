@@ -64,7 +64,7 @@ export default function AppHeader({
                 <Link
                   href="/settings"
                   onClick={() => setOpen(false)}
-                  className="block px-3 py-2 text-sm text-muted hover:bg-surface hover:text-fg focus-visible:bg-surface focus-visible:text-fg focus-visible:outline-none"
+                  className="block px-3 py-2 text-sm text-muted hover:bg-surface hover:text-fg focus-visible:bg-surface focus-visible:text-fg focus-visible:outline-hidden"
                 >
                   Settings
                 </Link>

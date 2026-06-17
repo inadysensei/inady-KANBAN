@@ -52,7 +52,7 @@ export default function SessionList({
               type="button"
               onClick={() => onOpen(s)}
               title={s.mainPrompt}
-              className={`flex min-w-0 flex-1 items-center gap-2 rounded-md border px-2 py-1.5 text-left text-xs transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${
+              className={`flex min-w-0 flex-1 items-center gap-2 rounded-md border px-2 py-1.5 text-left text-xs transition-colors hover:bg-surface focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/60 ${
                 activeSessionId === s.id
                   ? "border-accent bg-accent/10"
                   : "border-line"
@@ -68,7 +68,7 @@ export default function SessionList({
               />
               <span className="min-w-0 flex-1 truncate text-fg">{label}</span>
               {s.status === "running" && activeSessionId !== s.id && (
-                <span className="shrink-0 rounded bg-ok/15 px-1 text-[10px] text-ok">
+                <span className="shrink-0 rounded-sm bg-ok/15 px-1 text-[10px] text-ok">
                   background
                 </span>
               )}

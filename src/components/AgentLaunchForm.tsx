@@ -95,7 +95,7 @@ export default function AgentLaunchForm({
           {agents.map((agent) => (
             <label
               key={agent}
-              className="flex cursor-pointer items-center gap-2 rounded-md border border-line bg-surface px-3 py-2 text-sm text-fg transition-colors has-[:checked]:border-accent has-[:checked]:bg-accent/10"
+              className="flex cursor-pointer items-center gap-2 rounded-md border border-line bg-surface px-3 py-2 text-sm text-fg transition-colors has-checked:border-accent has-checked:bg-accent/10"
             >
               <input
                 type="radio"
@@ -269,7 +269,7 @@ export default function AgentLaunchForm({
           <button
             type="button"
             onClick={addMemberSlot}
-            className="self-start rounded text-xs text-muted underline hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+            className="self-start rounded-sm text-xs text-muted underline hover:text-fg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/60"
           >
             Add member
           </button>
