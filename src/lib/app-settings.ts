@@ -15,6 +15,14 @@ import {
   parseAgentTools,
   serializeAgentTools,
 } from "./agent-tools";
+import {
+  type CursorModelChoices,
+  type CursorModelSelectionEntry,
+  cursorModelOptions,
+  defaultCursorModel,
+  parseCursorModelSelection,
+  serializeCursorModelSelection,
+} from "./cursor-models";
 
 /** The single `app_settings` row both the Claude defaults and the boot-time
  *  seeding flag live on. */
@@ -91,6 +99,28 @@ export function readAgentTools(): AgentToolSetting[] {
 
 export function writeAgentTools(tools: AgentToolSetting[]): void {
   upsertAppSettings({ agentTools: serializeAgentTools(tools) });
+}
+
+/** The configured cursor models (which to show, order, default), normalized —
+ *  defaults to Composer 2.5 + Auto when unset. */
+export function readCursorModelSelection(): CursorModelSelectionEntry[] {
+  return parseCursorModelSelection(readSettingsRow()?.cursorModels);
+}
+
+export function writeCursorModelSelection(
+  selection: CursorModelSelectionEntry[],
+): void {
+  upsertAppSettings({ cursorModels: serializeCursorModelSelection(selection) });
+}
+
+/** Launch-form view of the cursor selection: enabled options (in order) + the
+ *  default pick. What the New agent / template forms need. */
+export function readCursorModelChoices(): CursorModelChoices {
+  const selection = readCursorModelSelection();
+  return {
+    options: cursorModelOptions(selection),
+    default: defaultCursorModel(selection),
+  };
 }
 
 export { DEFAULT_CLAUDE_EFFORT, DEFAULT_CLAUDE_MODEL };

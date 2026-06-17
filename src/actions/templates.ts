@@ -39,6 +39,7 @@ export async function executeTaskTemplate(
       agentTeamMembers: members,
       claudeModel: template.claudeModel,
       claudeEffort: template.claudeEffort,
+      cursorModel: template.cursorModel,
     });
 
     revalidatePath("/");

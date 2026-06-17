@@ -1,0 +1,46 @@
+name: sync-cursor-models
+
+on:
+  schedule:
+    # 06:00 UTC daily.
+    - cron: "0 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install cursor CLI
+        run: |
+          curl https://cursor.com/install -fsS | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Regenerate cursor model catalog
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+        run: npm run sync:cursor-models
+
+      - name: Open a PR if the catalog changed
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          commit-message: "chore: sync cursor model catalog"
+          title: "chore: sync cursor model catalog"
+          body: |
+            Automated refresh of `src/lib/cursor-models.generated.json` from
+            `cursor-agent --list-models`. Review the model list diff before merging.
+          branch: chore/sync-cursor-models
+          add-paths: src/lib/cursor-models.generated.json
+          delete-branch: true

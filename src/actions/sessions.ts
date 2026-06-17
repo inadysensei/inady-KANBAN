@@ -15,7 +15,8 @@ import {
   type ClaudeEffort,
   type ClaudeModel,
 } from "@/lib/agent-launch";
-import { readClaudeDefaults } from "@/lib/app-settings";
+import { readClaudeDefaults, readCursorModelSelection } from "@/lib/app-settings";
+import { defaultCursorModel, resolveCursorModel } from "@/lib/cursor-models";
 import { createChat } from "@/lib/cursor-agent";
 
 export type CreateAgentSessionInput = {
@@ -27,6 +28,9 @@ export type CreateAgentSessionInput = {
   agentTeamMembers?: string[];
   claudeModel?: ClaudeModel | string | null;
   claudeEffort?: ClaudeEffort | string | null;
+  /** Combined cursor model id (effort baked in); resolved against the
+   *  configured default when omitted. */
+  cursorModel?: string | null;
   /** Launch the CLI in an isolated git worktree (`--worktree`). */
   worktree?: boolean;
 };
@@ -74,6 +78,13 @@ export async function createAgentSession(
           defaultEffort: defaults.effort,
         })
       : null;
+  const cursorModel =
+    opts.agent === "cursor"
+      ? resolveCursorModel({
+          model: opts.cursorModel,
+          defaultModel: defaultCursorModel(readCursorModelSelection()),
+        })
+      : null;
 
   // cursor: may take a moment (talks to the Cursor backend); surfaces a clear
   // error if cursor-agent isn't logged in / on PATH.
@@ -104,6 +115,7 @@ export async function createAgentSession(
         mainPrompt,
         claudeModel: claudeLaunch?.model ?? null,
         claudeEffort: claudeLaunch?.effort ?? null,
+        cursorModel,
         worktree: opts.worktree ?? false,
         startedAt: now,
         endedAt: null,

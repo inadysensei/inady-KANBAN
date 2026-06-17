@@ -19,6 +19,7 @@ import {
 import {
   writeAgentTools,
   writeClaudeDefaults,
+  writeCursorModelSelection,
   writeDateFormat,
 } from "@/lib/app-settings";
 import {
@@ -26,6 +27,10 @@ import {
   normalizeAgentTools,
   validateAgentTools,
 } from "@/lib/agent-tools";
+import {
+  type CursorModelSelectionEntry,
+  normalizeCursorModelSelection,
+} from "@/lib/cursor-models";
 import { DATE_FORMATS, type DateFormat } from "@/lib/date-format";
 import { assertValidWorkingDir } from "@/lib/working-dirs";
 
@@ -59,6 +64,17 @@ export async function saveAgentTools(tools: AgentToolSetting[]): Promise<void> {
   revalidatePath("/");
 }
 
+export async function saveCursorModels(
+  selection: CursorModelSelectionEntry[],
+): Promise<void> {
+  // Re-normalize the untrusted client array (drops bad/dup entries, guarantees
+  // exactly one default, falls back to the default selection when empty) so the
+  // stored shape is always canonical.
+  writeCursorModelSelection(normalizeCursorModelSelection(selection));
+  revalidatePath("/settings");
+  revalidatePath("/");
+}
+
 export async function saveDateFormat(format: DateFormat): Promise<void> {
   if (!DATE_FORMATS.includes(format)) {
     throw new Error("invalid date format");
@@ -80,6 +96,7 @@ export async function saveTaskTemplate(input: {
   agentTeamMembers?: string[];
   claudeModel?: ClaudeModel | null;
   claudeEffort?: ClaudeEffort | null;
+  cursorModel?: string | null;
 }): Promise<{ id: string }> {
   const name = input.name.trim();
   const title = input.title.trim();
@@ -100,6 +117,10 @@ export async function saveTaskTemplate(input: {
           effort: input.claudeEffort,
         })
       : null;
+  // Cursor: store the chosen model as-is (or null → resolves to the configured
+  // default at execution time). Effort is baked into the cursor model id.
+  const cursorModel =
+    input.agent === "cursor" ? input.cursorModel?.trim() || null : null;
 
   if (input.id) {
     const existing = db
@@ -120,6 +141,7 @@ export async function saveTaskTemplate(input: {
         agentTeamMembers: members,
         claudeModel: claudeLaunch?.model ?? null,
         claudeEffort: claudeLaunch?.effort ?? null,
+        cursorModel,
         updatedAt: now,
       })
       .where(eq(taskTemplates.id, input.id))
@@ -144,6 +166,7 @@ export async function saveTaskTemplate(input: {
       agentTeamMembers: members,
       claudeModel: claudeLaunch?.model ?? null,
       claudeEffort: claudeLaunch?.effort ?? null,
+      cursorModel,
       position: (last?.p ?? 0) + 1,
       createdAt: now,
       updatedAt: now,

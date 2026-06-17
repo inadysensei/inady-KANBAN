@@ -19,6 +19,7 @@ import type {
 } from "@/db/schema";
 import { AGENT_KINDS } from "@/db/schema";
 import type { ClaudeEffort, ClaudeModel } from "@/lib/agent-launch";
+import type { CursorModelChoices } from "@/lib/cursor-models";
 import { killAgentSession, killTicketSessions } from "@/lib/agent-session-api";
 import {
   type DateFormat,
@@ -58,6 +59,7 @@ export default function TicketDetailView({
   workingDirs,
   editors,
   claudeDefaults,
+  cursorModelChoices,
   teamTemplates,
   agents = AGENT_KINDS,
   initialSessionId,
@@ -72,6 +74,7 @@ export default function TicketDetailView({
   workingDirs: string[];
   editors: Editor[];
   claudeDefaults: { model: ClaudeModel; effort: ClaudeEffort };
+  cursorModelChoices: CursorModelChoices;
   teamTemplates: TeamTemplate[];
   /** Enabled tools (Settings), in display order. */
   agents?: AgentKind[];
@@ -307,6 +310,7 @@ export default function TicketDetailView({
           mainPrompt: session.mainPrompt,
           claudeModel: session.claudeModel,
           claudeEffort: session.claudeEffort,
+          cursorModel: session.cursorModel,
         });
         openFreshSession(sessionDbId);
       } catch (err) {
@@ -486,6 +490,7 @@ export default function TicketDetailView({
         <NewAgentPanel
           ticketId={ticket.id}
           claudeDefaults={claudeDefaults}
+          cursorModelChoices={cursorModelChoices}
           teamTemplates={teamTemplates}
           agents={agents}
           onStarted={openFreshSession}

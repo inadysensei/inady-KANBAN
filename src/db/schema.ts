@@ -93,6 +93,11 @@ export const agentSessions = sqliteTable(
     // Claude-only launch flags (null for cursor sessions).
     claudeModel: text("model"),
     claudeEffort: text("effort"),
+    // Cursor-only launch flag (null for claude sessions). The combined model id
+    // (effort baked in, e.g. "composer-2.5", "gpt-5.3-codex-high"); cursor has
+    // no separate --effort. Passed via --model on every cursor launch (it's
+    // per-invocation, not pinned to the chat). Nullable so db:push adds cleanly.
+    cursorModel: text("cursor_model"),
     // Launch the CLI in an isolated git worktree (`--worktree`, supported by
     // both cursor and claude). Per-session opt-in, default off; never inherited
     // (re-run starts fresh). The flag is passed only on the initial launch —
@@ -120,6 +125,7 @@ export const taskTemplates = sqliteTable(
       .default("claude"),
     claudeModel: text("model"),
     claudeEffort: text("effort"),
+    cursorModel: text("cursor_model"),
     mainPrompt: text("prompt").notNull().default(""),
     useAgentTeam: integer("team_enabled", { mode: "boolean" })
       .notNull()
@@ -155,6 +161,11 @@ export const appSettings = sqliteTable("app_settings", {
   // agent team members). Default "[]" → parseAgentTools fills in every kind
   // enabled, so an existing seeded row picks up "both on" with no migration.
   agentTools: text("agent_tools").notNull().default("[]"),
+  // Which cursor models the launch form offers, in display order, and which is
+  // default. JSON array of { id, default } (same JSON-in-text precedent).
+  // Default "[]" → parseCursorModelSelection returns Composer 2.5 + Auto, so an
+  // unset board shows exactly those two with no seeding.
+  cursorModels: text("cursor_models").notNull().default("[]"),
   // One-shot flag: 1 once `bootstrapDefaults` has imported the legacy
   // working-dirs file and seeded the default editors. Guards against re-seeding
   // after the user intentionally clears those lists.

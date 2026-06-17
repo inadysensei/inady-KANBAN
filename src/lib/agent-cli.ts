@@ -21,6 +21,9 @@ export interface AgentCli {
     resume: boolean;
     claudeModel?: ClaudeModel;
     claudeEffort?: ClaudeEffort;
+    /** Combined cursor model id (effort baked in). Passed via --model on every
+     *  cursor launch — it's per-invocation, not pinned to the chat. */
+    cursorModel?: string;
     /** Launch in an isolated git worktree (`--worktree`). Initial launch only. */
     worktree?: boolean;
   }): string[];
@@ -42,11 +45,16 @@ export const AGENT_CLIS: Record<AgentKind, AgentCli> = {
     // initial launch and a re-open go through --resume. `--worktree` only makes
     // sense on the initial launch (it creates a *new* worktree); it goes first
     // so the next token is another flag — its optional `[name]` would otherwise
-    // swallow the positional prompt.
-    buildArgs: ({ sessionId, wrappedPrompt, resume, worktree }) => {
-      if (resume) return ["--resume", sessionId];
+    // swallow the positional prompt. `--model` is re-passed on EVERY launch
+    // (incl. resume): cursor's --model is per-invocation, not pinned to the chat
+    // (`create-chat` takes no model), so omitting it on resume would silently
+    // revert to cursor's default. It takes a value, so it never swallows the
+    // positional prompt.
+    buildArgs: ({ sessionId, wrappedPrompt, resume, worktree, cursorModel }) => {
+      const model = cursorModel ? ["--model", cursorModel] : [];
+      if (resume) return ["--resume", sessionId, ...model];
       const lead = worktree ? ["--worktree"] : [];
-      return [...lead, "--resume", sessionId, wrappedPrompt];
+      return [...lead, "--resume", sessionId, ...model, wrappedPrompt];
     },
     // "▶ [a] Trust this workspace"
     trustPromptRe: /Trust this workspace/,

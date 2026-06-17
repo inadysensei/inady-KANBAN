@@ -10,6 +10,7 @@ import {
 import {
   readAgentTools,
   readClaudeDefaults,
+  readCursorModelSelection,
   readDateFormat,
 } from "@/lib/app-settings";
 
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
 
 export default function SettingsPage() {
   const claudeDefaults = readClaudeDefaults();
+  const cursorModelSelection = readCursorModelSelection();
   const dateFormat = readDateFormat();
   const agentTools = readAgentTools();
   const taskTemplates = listTaskTemplates();
@@ -29,6 +31,7 @@ export default function SettingsPage() {
   return (
     <SettingsView
       claudeDefaults={claudeDefaults}
+      cursorModelSelection={cursorModelSelection}
       dateFormat={dateFormat}
       agentTools={agentTools}
       taskTemplates={taskTemplates}

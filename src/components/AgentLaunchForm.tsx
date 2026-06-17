@@ -8,6 +8,8 @@ import {
   padAgentTeamMembers,
   parseAgentTeamMembers,
 } from "@/lib/agent-launch";
+import type { CursorModelChoices } from "@/lib/cursor-models";
+import { cursorModelLabel, isKnownCursorModel } from "@/lib/cursor-models";
 import { AGENT_KINDS, type AgentKind } from "@/db/schema";
 import { AGENT_LABELS, AGENT_LOGOS } from "@/lib/agent-display";
 import type { TeamTemplate } from "@/db/schema";
@@ -20,6 +22,8 @@ export type AgentLaunchValues = {
   prompt: string;
   claudeModel: ClaudeModel;
   claudeEffort: ClaudeEffort;
+  /** Combined cursor model id (effort baked in). Only used when agent==="cursor". */
+  cursorModel: string;
   useAgentTeam: boolean;
   agentTeamMembers: string[];
   /** Launch the CLI in an isolated git worktree (`--worktree`, both CLIs). */
@@ -35,6 +39,7 @@ export default function AgentLaunchForm({
   values,
   onChange,
   claudeDefaults,
+  cursorModelChoices,
   teamTemplates,
   agents = AGENT_KINDS,
   settingsHref = "/settings",
@@ -46,6 +51,7 @@ export default function AgentLaunchForm({
   values: AgentLaunchValues;
   onChange: (next: AgentLaunchValues) => void;
   claudeDefaults: { model: ClaudeModel; effort: ClaudeEffort };
+  cursorModelChoices: CursorModelChoices;
   teamTemplates: TeamTemplate[];
   /** Tools to offer, in display order — the enabled ones from Settings.
    *  Defaults to every kind so callers that don't thread the setting still work. */
@@ -103,6 +109,8 @@ export default function AgentLaunchForm({
                       values.claudeModel || claudeDefaults.model,
                     claudeEffort:
                       values.claudeEffort || claudeDefaults.effort,
+                    cursorModel:
+                      values.cursorModel || cursorModelChoices.default,
                   })
                 }
                 className="accent-accent"
@@ -150,6 +158,37 @@ export default function AgentLaunchForm({
             </select>
           </label>
         </div>
+      )}
+
+      {values.agent === "cursor" && (
+        <label className="flex flex-col gap-1 text-xs">
+          <span className="font-semibold text-muted">Model</span>
+          <select
+            value={values.cursorModel}
+            onChange={(e) => patch({ cursorModel: e.target.value })}
+            className={inputClass()}
+          >
+            {/* Keep the current value selectable even if it's no longer in the
+                enabled set (e.g. a template pinned a since-removed model). */}
+            {!cursorModelChoices.options.some(
+              (o) => o.id === values.cursorModel,
+            ) &&
+              values.cursorModel && (
+                <option value={values.cursorModel}>
+                  {cursorModelLabel(values.cursorModel)}
+                  {isKnownCursorModel(values.cursorModel)
+                    ? ""
+                    : " (unavailable)"}
+                </option>
+              )}
+            {cursorModelChoices.options.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+                {isKnownCursorModel(option.id) ? "" : " (unavailable)"}
+              </option>
+            ))}
+          </select>
+        </label>
       )}
 
       {showWorktree && (
@@ -256,7 +295,12 @@ export function AgentLaunchFormReadonlySummary({
 }: {
   values: Pick<
     AgentLaunchValues,
-    "agent" | "claudeModel" | "claudeEffort" | "useAgentTeam" | "agentTeamMembers"
+    | "agent"
+    | "claudeModel"
+    | "claudeEffort"
+    | "cursorModel"
+    | "useAgentTeam"
+    | "agentTeamMembers"
   >;
 }) {
   return (
@@ -266,6 +310,9 @@ export function AgentLaunchFormReadonlySummary({
         <li>
           Claude: {values.claudeModel} / {values.claudeEffort}
         </li>
+      )}
+      {values.agent === "cursor" && values.cursorModel && (
+        <li>Cursor: {cursorModelLabel(values.cursorModel)}</li>
       )}
       {values.useAgentTeam && (
         <li>

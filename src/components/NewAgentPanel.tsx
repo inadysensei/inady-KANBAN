@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { createAgentSession } from "@/actions/sessions";
 import type { ClaudeEffort, ClaudeModel } from "@/lib/agent-launch";
+import type { CursorModelChoices } from "@/lib/cursor-models";
 import type { AgentKind, TeamTemplate } from "@/db/schema";
 import { AGENT_KINDS } from "@/db/schema";
 import { cardClass } from "@/lib/ui-classes";
@@ -18,12 +19,14 @@ const DEFAULT_PROMPT = "Implement this.";
 export default function NewAgentPanel({
   ticketId,
   claudeDefaults,
+  cursorModelChoices,
   teamTemplates,
   agents = AGENT_KINDS,
   onStarted,
 }: {
   ticketId: string;
   claudeDefaults: { model: ClaudeModel; effort: ClaudeEffort };
+  cursorModelChoices: CursorModelChoices;
   teamTemplates: TeamTemplate[];
   /** Enabled tools (Settings), in display order. */
   agents?: AgentKind[];
@@ -34,6 +37,7 @@ export default function NewAgentPanel({
     prompt: DEFAULT_PROMPT,
     claudeModel: claudeDefaults.model,
     claudeEffort: claudeDefaults.effort,
+    cursorModel: cursorModelChoices.default,
     useAgentTeam: false,
     agentTeamMembers: emptyTeamSlots(),
     worktree: false,
@@ -60,6 +64,8 @@ export default function NewAgentPanel({
             values.agent === "claude" ? values.claudeModel : undefined,
           claudeEffort:
             values.agent === "claude" ? values.claudeEffort : undefined,
+          cursorModel:
+            values.agent === "cursor" ? values.cursorModel : undefined,
           worktree: values.worktree,
         });
         setValues((prev) => ({ ...prev, prompt: DEFAULT_PROMPT }));
@@ -78,6 +84,7 @@ export default function NewAgentPanel({
         values={values}
         onChange={setValues}
         claudeDefaults={claudeDefaults}
+        cursorModelChoices={cursorModelChoices}
         teamTemplates={teamTemplates}
         agents={agents}
         settingsHref="/settings#team-templates"

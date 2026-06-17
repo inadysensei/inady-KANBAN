@@ -8,6 +8,7 @@ import {
   deleteTeamTemplate,
   saveAgentTools,
   saveClaudeDefaults,
+  saveCursorModels,
   saveDateFormat,
   saveTaskTemplate,
   saveTeamTemplate,
@@ -40,6 +41,21 @@ import {
   moveAgentTool,
   setAgentToolEnabled,
 } from "@/lib/agent-tools";
+import type {
+  CursorModelChoices,
+  CursorModelSelectionEntry,
+} from "@/lib/cursor-models";
+import {
+  addCursorModel,
+  availableCursorModelsToAdd,
+  cursorModelLabel,
+  cursorModelOptions,
+  defaultCursorModel,
+  isKnownCursorModel,
+  moveCursorModel,
+  removeCursorModel,
+  setDefaultCursorModel,
+} from "@/lib/cursor-models";
 import { isValidTagColor, normalizeTagColor } from "@/lib/tags";
 import TagBadge from "@/components/TagBadge";
 import { AGENT_LABELS, AGENT_LOGOS } from "@/lib/agent-display";
@@ -77,6 +93,7 @@ function TaskTemplateEditor({
   template,
   workingDirs,
   claudeDefaults,
+  cursorModelChoices,
   teamTemplates,
   agents,
   onSaved,
@@ -85,6 +102,7 @@ function TaskTemplateEditor({
   template?: TaskTemplate;
   workingDirs: string[];
   claudeDefaults: { model: ClaudeModel; effort: ClaudeEffort };
+  cursorModelChoices: CursorModelChoices;
   teamTemplates: TeamTemplate[];
   agents: AgentKind[];
   onSaved: () => void;
@@ -109,6 +127,7 @@ function TaskTemplateEditor({
       (template?.claudeModel as ClaudeModel | null) ?? claudeDefaults.model,
     claudeEffort:
       (template?.claudeEffort as ClaudeEffort | null) ?? claudeDefaults.effort,
+    cursorModel: template?.cursorModel ?? cursorModelChoices.default,
     useAgentTeam: template?.useAgentTeam ?? false,
     agentTeamMembers: template
       ? parseMembers(template.agentTeamMembers)
@@ -137,6 +156,7 @@ function TaskTemplateEditor({
             : [],
           claudeModel: launch.agent === "claude" ? launch.claudeModel : null,
           claudeEffort: launch.agent === "claude" ? launch.claudeEffort : null,
+          cursorModel: launch.agent === "cursor" ? launch.cursorModel : null,
         });
         onSaved();
       } catch (err) {
@@ -194,6 +214,7 @@ function TaskTemplateEditor({
         values={launch}
         onChange={setLaunch}
         claudeDefaults={claudeDefaults}
+        cursorModelChoices={cursorModelChoices}
         teamTemplates={teamTemplates}
         agents={agents}
         settingsHref="/settings#team-templates"
@@ -584,6 +605,7 @@ const DATE_PREVIEW_TS = new Date(2026, 0, 31).getTime();
 
 export default function SettingsView({
   claudeDefaults,
+  cursorModelSelection,
   dateFormat,
   agentTools,
   taskTemplates,
@@ -594,6 +616,7 @@ export default function SettingsView({
   tags,
 }: {
   claudeDefaults: { model: ClaudeModel; effort: ClaudeEffort };
+  cursorModelSelection: CursorModelSelectionEntry[];
   dateFormat: DateFormat;
   agentTools: AgentToolSetting[];
   taskTemplates: TaskTemplate[];
@@ -622,6 +645,31 @@ export default function SettingsView({
         router.refresh();
       } catch (err) {
         setToolsError((err as Error).message);
+      }
+    });
+  }
+
+  // Cursor models: the curated/ordered selection shown in the launch form. The
+  // full catalog lives client-side (cursor-models.ts), so the "add" dropdown and
+  // labels resolve without a prop.
+  const [cursorModels, setCursorModels] = useState(cursorModelSelection);
+  const [cursorModelsError, setCursorModelsError] = useState<string | null>(null);
+  const [cursorModelsPending, saveCursorModelsTransition] = useTransition();
+  const cursorModelsToAdd = availableCursorModelsToAdd(cursorModels);
+  // What the task-template editor's launch form offers (the saved selection).
+  const savedCursorChoices: CursorModelChoices = {
+    options: cursorModelOptions(cursorModelSelection),
+    default: defaultCursorModel(cursorModelSelection),
+  };
+
+  function saveCursorModelSelection() {
+    setCursorModelsError(null);
+    saveCursorModelsTransition(async () => {
+      try {
+        await saveCursorModels(cursorModels);
+        router.refresh();
+      } catch (err) {
+        setCursorModelsError((err as Error).message);
       }
     });
   }
@@ -817,6 +865,122 @@ export default function SettingsView({
             className={buttonClass({ extra: "mt-3" })}
           >
             {defaultsPending ? "Saving…" : "Save defaults"}
+          </button>
+        </div>
+      </section>
+
+      <section id="cursor-models" className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold">Cursor models</h2>
+        <div className={cardClass("flex flex-col gap-3 p-4")}>
+          <p className="text-xs text-muted">
+            Which cursor models the New agent form and task templates offer, the
+            order they appear in, and the default pick. Cursor bakes the effort
+            into the model id, so each entry is one model × effort combination.
+          </p>
+          <ul className="flex max-w-md flex-col gap-2">
+            {cursorModels.map((entry, index) => (
+              <li
+                key={entry.id}
+                className="flex items-center justify-between gap-2 rounded-md border border-line bg-card px-3 py-2"
+              >
+                <label className="flex flex-1 cursor-pointer items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="cursor-default-model"
+                    checked={entry.default}
+                    onChange={() =>
+                      setCursorModels((prev) =>
+                        setDefaultCursorModel(prev, entry.id),
+                      )
+                    }
+                    className="accent-accent"
+                    aria-label={`Set ${cursorModelLabel(entry.id)} as default`}
+                  />
+                  <span className="truncate font-medium">
+                    {cursorModelLabel(entry.id)}
+                  </span>
+                  {entry.default && (
+                    <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted">
+                      default
+                    </span>
+                  )}
+                  {!isKnownCursorModel(entry.id) && (
+                    <span
+                      className="shrink-0 text-[10px] uppercase tracking-wide text-warn"
+                      title="This model is no longer offered by cursor — remove it or pick another."
+                    >
+                      unavailable
+                    </span>
+                  )}
+                </label>
+                <div className="flex shrink-0 items-center gap-1">
+                  <IconButton
+                    size="sm"
+                    aria-label={`Move ${cursorModelLabel(entry.id)} up`}
+                    disabled={index === 0}
+                    onClick={() =>
+                      setCursorModels((prev) => moveCursorModel(prev, index, -1))
+                    }
+                  >
+                    <MoveUpIcon size={ICON_SIZE_SM} />
+                  </IconButton>
+                  <IconButton
+                    size="sm"
+                    aria-label={`Move ${cursorModelLabel(entry.id)} down`}
+                    disabled={index === cursorModels.length - 1}
+                    onClick={() =>
+                      setCursorModels((prev) => moveCursorModel(prev, index, 1))
+                    }
+                  >
+                    <MoveDownIcon size={ICON_SIZE_SM} />
+                  </IconButton>
+                  <IconButton
+                    size="sm"
+                    aria-label={`Remove ${cursorModelLabel(entry.id)}`}
+                    disabled={cursorModels.length <= 1}
+                    onClick={() =>
+                      setCursorModels((prev) => removeCursorModel(prev, entry.id))
+                    }
+                  >
+                    <TrashIcon size={ICON_SIZE_SM} />
+                  </IconButton>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {/* The long catalog lives inside this dropdown, keeping the page short. */}
+          <select
+            value=""
+            disabled={cursorModelsToAdd.length === 0}
+            onChange={(e) => {
+              const id = e.target.value;
+              if (id) setCursorModels((prev) => addCursorModel(prev, id));
+              e.target.value = "";
+            }}
+            className={inputClass("max-w-md")}
+            aria-label="Add a cursor model"
+          >
+            <option value="">
+              {cursorModelsToAdd.length === 0
+                ? "All models added"
+                : "+ Add a model…"}
+            </option>
+            {cursorModelsToAdd.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {cursorModelsError && (
+            <p className="text-xs text-danger">{cursorModelsError}</p>
+          )}
+          <button
+            type="button"
+            disabled={cursorModelsPending}
+            onClick={saveCursorModelSelection}
+            className={buttonClass({ extra: "self-start" })}
+          >
+            {cursorModelsPending ? "Saving…" : "Save cursor models"}
           </button>
         </div>
       </section>
@@ -1091,6 +1255,7 @@ export default function SettingsView({
             template={editingTask}
             workingDirs={workingDirs}
             claudeDefaults={claudeDefaults}
+            cursorModelChoices={savedCursorChoices}
             teamTemplates={teamTemplates}
             agents={enabledTemplateAgents}
             onSaved={() => {

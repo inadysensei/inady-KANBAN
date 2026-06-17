@@ -24,7 +24,8 @@
     "lint": "next lint",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "sync:cursor-models": "tsx scripts/sync-cursor-models.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

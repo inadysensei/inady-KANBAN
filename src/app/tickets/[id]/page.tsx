@@ -13,6 +13,7 @@ import { agentSessions, ticketMemos, tickets } from "@/db/schema";
 import {
   readAgentTools,
   readClaudeDefaults,
+  readCursorModelChoices,
   readDateFormat,
 } from "@/lib/app-settings";
 import { enabledAgents } from "@/lib/agent-tools";
@@ -49,6 +50,7 @@ export default async function TicketPage({
   const workingDirs = readWorkingDirs();
   const editors = listEditors();
   const claudeDefaults = readClaudeDefaults();
+  const cursorModelChoices = readCursorModelChoices();
   const dateFormat = readDateFormat();
   const agents = enabledAgents(readAgentTools());
   const teamTemplates = listTeamTemplates();
@@ -72,6 +74,7 @@ export default async function TicketPage({
       workingDirs={workingDirs}
       editors={editors}
       claudeDefaults={claudeDefaults}
+      cursorModelChoices={cursorModelChoices}
       teamTemplates={teamTemplates}
       agents={agents}
       initialSessionId={validInitialSessionId}

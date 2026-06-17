@@ -337,6 +337,7 @@ export function startSession(
     claudeEffort: session.claudeEffort
       ? parseClaudeEffort(session.claudeEffort)
       : undefined,
+    cursorModel: session.cursorModel ?? undefined,
     worktree: session.worktree,
   });
 

@@ -40,6 +40,47 @@ describe("cursor CLI", () => {
     ).toEqual(["--resume", ID]);
   });
 
+  test("initial launch passes --model before the positional prompt", () => {
+    expect(
+      cursor.buildArgs({
+        sessionId: ID,
+        wrappedPrompt: "do x",
+        resume: false,
+        cursorModel: "composer-2.5",
+      }),
+    ).toEqual(["--resume", ID, "--model", "composer-2.5", "do x"]);
+  });
+
+  test("worktree launch keeps order: --worktree, --resume, --model, prompt", () => {
+    expect(
+      cursor.buildArgs({
+        sessionId: ID,
+        wrappedPrompt: "do x",
+        resume: false,
+        worktree: true,
+        cursorModel: "gpt-5.3-codex-high",
+      }),
+    ).toEqual([
+      "--worktree",
+      "--resume",
+      ID,
+      "--model",
+      "gpt-5.3-codex-high",
+      "do x",
+    ]);
+  });
+
+  test("resume re-passes --model (per-invocation, not pinned to the chat)", () => {
+    expect(
+      cursor.buildArgs({
+        sessionId: ID,
+        wrappedPrompt: "ignored",
+        resume: true,
+        cursorModel: "composer-2.5",
+      }),
+    ).toEqual(["--resume", ID, "--model", "composer-2.5"]);
+  });
+
   test("auto-accepts the workspace trust prompt with 'a'", () => {
     expect(cursor.trustPromptRe.test("▶ [a] Trust this workspace")).toBe(true);
     expect(cursor.trustPromptRe.test("regular output")).toBe(false);
