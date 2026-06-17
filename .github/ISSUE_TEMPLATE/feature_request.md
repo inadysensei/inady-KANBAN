@@ -34,7 +34,3 @@ assignees: []
 ## Acceptance criteria
 - [ ]
 - [ ] `npm test` / `npm run typecheck` / `npm run build` pass
-
-## Effort / Notes
-- Size: <!-- S / M / L -->
-- Dependencies / constraints:

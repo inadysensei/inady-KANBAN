@@ -6,7 +6,7 @@ labels: ["bug"]
 assignees: []
 ---
 
-> 🐛 **bug** / A bug in inady KANBAN (localhost, single-user)
+> 🐛 **bug** / A bug in inady KANBAN
 
 ## Summary
 <!-- 1-2 lines: what is happening -->
@@ -26,7 +26,6 @@ assignees: []
 - OS:
 - Node.js: <!-- node -v -->
 - CLI used: <!-- cursor / claude / both -->
-- Branch / commit:
 
 ## Logs / screenshots
 <!-- Server (npm run dev) console output, browser console, terminal output, etc. -->
