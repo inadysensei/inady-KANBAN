@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Language
+
+This repository's language is **English**. Write all code, comments, and issues in English.
+
 ## What this is
 
 A localhost, single-user inady KANBAN board that drives the **Cursor/Claude CLI** (`cursor` or `claude`) from the browser. Tickets flow To Do → Doing → WIP → Done. Starting an agent on a ticket auto-moves it to Doing; WIP is a parking lot for items set aside, and resuming work on a WIP ticket (typing into a resumed session, re-running a session, or launching a new one) auto-moves it back to Doing — merely opening a session to read it is glance-safe and keeps the ticket parked; the user drags to Done manually. Each ticket holds multiple agent sessions, each running `cursor` or `claude` in a server-side PTY streamed to an in-browser xterm.js terminal over a WebSocket.
