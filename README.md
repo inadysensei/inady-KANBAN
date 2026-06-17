@@ -175,8 +175,16 @@ For the full architecture, see [`CLAUDE.md`](CLAUDE.md).
 ## License
 
 **inady KANBAN** is **source-available** software under the
-[PolyForm Noncommercial License 1.0.0](LICENSE)
+[Apache License 2.0 with the Commons Clause](LICENSE).
 
-For commercial licensing, contact the author ([@inadysensei](https://github.com/inadysensei)).
+You may freely use, modify, and redistribute it — including inside a company,
+for internal business purposes. You may **not** "Sell" it: providing the
+software (or a product/service whose value derives substantially from it,
+including paid hosting or support) to third parties for a fee is not granted.
+Because of the Commons Clause, this is **not** an OSI-approved "open source"
+license.
+
+To sell it or offer it commercially as a product/service, contact the author
+([@inadysensei](https://github.com/inadysensei)) for a separate license.
 
 Copyright © 2026 inadysensei.
