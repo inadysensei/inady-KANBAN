@@ -172,6 +172,10 @@ For the full architecture, see [`CLAUDE.md`](CLAUDE.md).
 
 </details>
 
+## Contributing
+
+This repository's language is **English** — please write all code, comments, and issues in English.
+
 ## License
 
 **inady KANBAN** is **source-available** software under the
