@@ -21,6 +21,8 @@ export interface AgentCli {
     resume: boolean;
     claudeModel?: ClaudeModel;
     claudeEffort?: ClaudeEffort;
+    /** Launch in an isolated git worktree (`--worktree`). Initial launch only. */
+    worktree?: boolean;
   }): string[];
   /**
    * Line the TUI prints when the workspace/folder isn't trusted yet. The PTY
@@ -37,9 +39,15 @@ export const AGENT_CLIS: Record<AgentKind, AgentCli> = {
   cursor: {
     bin: CURSOR_AGENT_BIN,
     // The chat UUID is pre-issued via `cursor-agent create-chat`, so both the
-    // initial launch and a re-open go through --resume.
-    buildArgs: ({ sessionId, wrappedPrompt, resume }) =>
-      resume ? ["--resume", sessionId] : ["--resume", sessionId, wrappedPrompt],
+    // initial launch and a re-open go through --resume. `--worktree` only makes
+    // sense on the initial launch (it creates a *new* worktree); it goes first
+    // so the next token is another flag — its optional `[name]` would otherwise
+    // swallow the positional prompt.
+    buildArgs: ({ sessionId, wrappedPrompt, resume, worktree }) => {
+      if (resume) return ["--resume", sessionId];
+      const lead = worktree ? ["--worktree"] : [];
+      return [...lead, "--resume", sessionId, wrappedPrompt];
+    },
     // "▶ [a] Trust this workspace"
     trustPromptRe: /Trust this workspace/,
     trustAnswer: "a",
@@ -51,9 +59,20 @@ export const AGENT_CLIS: Record<AgentKind, AgentCli> = {
     // pin it with --session-id on first launch, then --resume it later.
     // --permission-mode auto on both: it's a per-run setting (not pinned to the
     // conversation like model/effort), so a resumed session launches the same way.
-    buildArgs: ({ sessionId, wrappedPrompt, resume, claudeModel, claudeEffort }) => {
+    buildArgs: ({
+      sessionId,
+      wrappedPrompt,
+      resume,
+      claudeModel,
+      claudeEffort,
+      worktree,
+    }) => {
       if (resume) return ["--resume", sessionId, "--permission-mode", "auto"];
-      const args = ["--session-id", sessionId, "--permission-mode", "auto"];
+      // `--worktree` first (initial launch only): leading so the token after it
+      // is another flag — its optional `[name]` would otherwise swallow the
+      // positional prompt.
+      const args = worktree ? ["--worktree"] : [];
+      args.push("--session-id", sessionId, "--permission-mode", "auto");
       if (claudeModel) args.push("--model", claudeModel);
       if (claudeEffort) args.push("--effort", claudeEffort);
       args.push(wrappedPrompt);

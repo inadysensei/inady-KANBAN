@@ -22,6 +22,8 @@ export type AgentLaunchValues = {
   claudeEffort: ClaudeEffort;
   useAgentTeam: boolean;
   agentTeamMembers: string[];
+  /** Launch the CLI in an isolated git worktree (`--worktree`, both CLIs). */
+  worktree: boolean;
 };
 
 export function emptyTeamSlots(count = MIN_TEAM_SLOTS): string[] {
@@ -38,6 +40,7 @@ export default function AgentLaunchForm({
   settingsHref = "/settings",
   promptLabel = "Prompt",
   promptRows = 4,
+  showWorktree = true,
 }: {
   idPrefix: string;
   values: AgentLaunchValues;
@@ -50,6 +53,9 @@ export default function AgentLaunchForm({
   settingsHref?: string;
   promptLabel?: string;
   promptRows?: number;
+  /** Whether to show the "worktree" toggle. Off for saved templates, which
+   *  never persist worktree (it's a deliberate per-launch opt-in). */
+  showWorktree?: boolean;
 }) {
   function patch(partial: Partial<AgentLaunchValues>) {
     onChange({ ...values, ...partial });
@@ -144,6 +150,18 @@ export default function AgentLaunchForm({
             </select>
           </label>
         </div>
+      )}
+
+      {showWorktree && (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={values.worktree}
+            onChange={(e) => patch({ worktree: e.target.checked })}
+            className="accent-accent"
+          />
+          worktree
+        </label>
       )}
 
       <label className="flex items-center gap-2 text-sm">

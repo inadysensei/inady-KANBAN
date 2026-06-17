@@ -93,6 +93,13 @@ export const agentSessions = sqliteTable(
     // Claude-only launch flags (null for cursor sessions).
     claudeModel: text("model"),
     claudeEffort: text("effort"),
+    // Launch the CLI in an isolated git worktree (`--worktree`, supported by
+    // both cursor and claude). Per-session opt-in, default off; never inherited
+    // (re-run starts fresh). The flag is passed only on the initial launch —
+    // resume does NOT re-pass it (that would spawn a second worktree); whether
+    // the CLI re-enters the original worktree on resume is the CLI's own
+    // behavior. notNull/default false so db:push adds it cleanly.
+    worktree: integer("worktree", { mode: "boolean" }).notNull().default(false),
   },
   (t) => [
     index("agent_sessions_ticket_started_idx").on(t.ticketId, t.startedAt),

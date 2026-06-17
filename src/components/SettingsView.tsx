@@ -113,6 +113,8 @@ function TaskTemplateEditor({
     agentTeamMembers: template
       ? parseMembers(template.agentTeamMembers)
       : emptyTeamSlots(),
+    // Templates never carry a worktree choice — it's a per-launch opt-in only.
+    worktree: false,
   });
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -196,6 +198,7 @@ function TaskTemplateEditor({
         agents={agents}
         settingsHref="/settings#team-templates"
         promptLabel="Main prompt"
+        showWorktree={false}
       />
       {error && <p className="text-xs text-danger">{error}</p>}
       <div className="flex gap-2">

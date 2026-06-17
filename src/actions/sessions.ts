@@ -27,6 +27,8 @@ export type CreateAgentSessionInput = {
   agentTeamMembers?: string[];
   claudeModel?: ClaudeModel | string | null;
   claudeEffort?: ClaudeEffort | string | null;
+  /** Launch the CLI in an isolated git worktree (`--worktree`). */
+  worktree?: boolean;
 };
 
 /**
@@ -102,6 +104,7 @@ export async function createAgentSession(
         mainPrompt,
         claudeModel: claudeLaunch?.model ?? null,
         claudeEffort: claudeLaunch?.effort ?? null,
+        worktree: opts.worktree ?? false,
         startedAt: now,
         endedAt: null,
         status: "running",

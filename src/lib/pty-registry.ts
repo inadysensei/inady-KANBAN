@@ -337,6 +337,7 @@ export function startSession(
     claudeEffort: session.claudeEffort
       ? parseClaudeEffort(session.claudeEffort)
       : undefined,
+    worktree: session.worktree,
   });
 
   let proc: pty.IPty;

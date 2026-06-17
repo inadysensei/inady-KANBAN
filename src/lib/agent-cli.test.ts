@@ -12,9 +12,31 @@ describe("cursor CLI", () => {
     ).toEqual(["--resume", ID, "do x"]);
   });
 
+  test("worktree launch leads with --worktree before --resume", () => {
+    expect(
+      cursor.buildArgs({
+        sessionId: ID,
+        wrappedPrompt: "do x",
+        resume: false,
+        worktree: true,
+      }),
+    ).toEqual(["--worktree", "--resume", ID, "do x"]);
+  });
+
   test("resume re-opens the chat without a prompt", () => {
     expect(
       cursor.buildArgs({ sessionId: ID, wrappedPrompt: "ignored", resume: true }),
+    ).toEqual(["--resume", ID]);
+  });
+
+  test("resume never adds --worktree (it would create a second worktree)", () => {
+    expect(
+      cursor.buildArgs({
+        sessionId: ID,
+        wrappedPrompt: "ignored",
+        resume: true,
+        worktree: true,
+      }),
     ).toEqual(["--resume", ID]);
   });
 
@@ -62,9 +84,44 @@ describe("claude CLI", () => {
     ]);
   });
 
+  test("worktree launch leads with --worktree before --session-id", () => {
+    expect(
+      claude.buildArgs({
+        sessionId: ID,
+        wrappedPrompt: "do x",
+        resume: false,
+        worktree: true,
+        claudeModel: "sonnet",
+        claudeEffort: "high",
+      }),
+    ).toEqual([
+      "--worktree",
+      "--session-id",
+      ID,
+      "--permission-mode",
+      "auto",
+      "--model",
+      "sonnet",
+      "--effort",
+      "high",
+      "do x",
+    ]);
+  });
+
   test("resume re-opens the conversation by id in auto permission mode", () => {
     expect(
       claude.buildArgs({ sessionId: ID, wrappedPrompt: "ignored", resume: true }),
+    ).toEqual(["--resume", ID, "--permission-mode", "auto"]);
+  });
+
+  test("resume never adds --worktree (it would create a second worktree)", () => {
+    expect(
+      claude.buildArgs({
+        sessionId: ID,
+        wrappedPrompt: "ignored",
+        resume: true,
+        worktree: true,
+      }),
     ).toEqual(["--resume", ID, "--permission-mode", "auto"]);
   });
 

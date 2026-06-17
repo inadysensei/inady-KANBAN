@@ -36,6 +36,7 @@ export default function NewAgentPanel({
     claudeEffort: claudeDefaults.effort,
     useAgentTeam: false,
     agentTeamMembers: emptyTeamSlots(),
+    worktree: false,
   });
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -59,6 +60,7 @@ export default function NewAgentPanel({
             values.agent === "claude" ? values.claudeModel : undefined,
           claudeEffort:
             values.agent === "claude" ? values.claudeEffort : undefined,
+          worktree: values.worktree,
         });
         setValues((prev) => ({ ...prev, prompt: DEFAULT_PROMPT }));
         onStarted(sessionDbId);
