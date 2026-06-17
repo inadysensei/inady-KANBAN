@@ -1,9 +1,11 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import next from "next";
 import { WebSocket, WebSocketServer } from "ws";
 import { MAX_CONCURRENT_AGENTS } from "./src/lib/agent-limits";
-import { SERVER_PORT } from "./src/lib/server-config";
+import { createMcpServer } from "./src/lib/inady-kanban-mcp";
+import { SERVER_PORT, serverBaseUrl } from "./src/lib/server-config";
 import {
   bootstrapDefaults,
   migrateLegacyTicketStatuses,
@@ -57,6 +59,9 @@ const TICKET_ID_PATH_RE = /^\/api\/tickets\/([^/]+)$/;
 const MEMOS_PATH = "/api/memos";
 const LIVE_COUNT_PATH = "/api/agent-sessions/live-count";
 const EVENTS_PATH = "/api/events";
+// MCP over Streamable HTTP — the same tools as `npm run mcp` (stdio), served by
+// the already-running board so a client connects with no subprocess.
+const MCP_PATH = "/mcp";
 const SSE_HEARTBEAT_MS = 30_000;
 // Cap request bodies so a runaway/garbage POST can't buffer unbounded memory.
 const MAX_BODY_BYTES = 1_000_000;
@@ -141,6 +146,65 @@ function checkCursorAgentAuth(): void {
       );
     }
   });
+}
+
+/**
+ * Handle one MCP request on `/mcp` over Streamable HTTP. Stateless: a fresh
+ * server + transport per request (no session state to track for a single-user
+ * tool), so GET/DELETE — which only make sense against a live session stream —
+ * get a 405. `enableJsonResponse` returns plain JSON instead of an SSE stream,
+ * which keeps simple clients (and curl) happy. The transport reads the request
+ * body itself, so the caller must NOT pre-consume it (and the shared
+ * `MAX_BODY_BYTES` cap doesn't apply here — acceptable for a localhost
+ * single-user tool). The in-process server talks to itself over loopback
+ * (serverBaseUrl), so an MCP edit flows through the same `/api/tickets` →
+ * ticket-core path as every other writer.
+ */
+async function handleMcpRequest(
+  req: import("node:http").IncomingMessage,
+  res: import("node:http").ServerResponse,
+): Promise<void> {
+  if (req.method !== "POST") {
+    res.writeHead(405, { "Content-Type": "application/json", Allow: "POST" });
+    res.end(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        error: { code: -32000, message: "Method Not Allowed: use POST." },
+        id: null,
+      }),
+    );
+    return;
+  }
+
+  const server = createMcpServer({ baseUrl: serverBaseUrl() });
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
+    enableJsonResponse: true,
+  });
+  // Tear down the per-request server + transport once the response closes.
+  res.on("close", () => {
+    void transport.close();
+    void server.close();
+  });
+  // A mid-write socket error must not surface as an unhandled 'error' and crash
+  // the process (cleanup runs on 'close') — same guard the SSE endpoint uses.
+  res.on("error", () => {});
+  try {
+    await server.connect(transport);
+    await transport.handleRequest(req, res);
+  } catch (err) {
+    console.error("[mcp] request error:", err);
+    if (!res.headersSent && !res.writableEnded && !res.destroyed) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          error: { code: -32603, message: "Internal server error." },
+          id: null,
+        }),
+      );
+    }
+  }
 }
 
 app.prepare().then(() => {
@@ -408,6 +472,11 @@ app.prepare().then(() => {
         clearInterval(heartbeat);
         unsubscribe();
       });
+      return;
+    }
+
+    if (pathname === MCP_PATH) {
+      void handleMcpRequest(req, res);
       return;
     }
 

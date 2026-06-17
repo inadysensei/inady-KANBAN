@@ -123,45 +123,52 @@ Without hooks you simply get a plain "running" dot — everything still works, t
 
 ## Let agents manage the board (MCP)
 
-Run a small [MCP](https://modelcontextprotocol.io) server so a coding agent can create, read, and update tickets itself:
-
-```bash
-npm run mcp
-```
-
-It needs the board running (`npm run dev`) and talks to it over HTTP — it has **no database of its own**, so the board UI, its HTTP API, and the MCP all change tickets the same way. Tools: `inady_kanban_list_tickets`, `inady_kanban_get_ticket`, `inady_kanban_create_ticket`, `inady_kanban_update_ticket`.
+The board speaks [MCP](https://modelcontextprotocol.io) so a coding agent can create, read, and update tickets itself. While `npm run dev` is up it **serves MCP over HTTP at `http://localhost:7373/mcp`** — no extra process — so a client just connects to the running server. The MCP has **no database of its own**: the board UI, its HTTP API, and the MCP all change tickets the same way. Tools: `inady_kanban_list_tickets`, `inady_kanban_get_ticket`, `inady_kanban_create_ticket`, `inady_kanban_update_ticket`.
 
 <details>
 <summary><b>Register it with Claude Code / Cursor</b></summary>
 
-Add to your project's `.mcp.json` (or the equivalent Cursor MCP config), run from this repo's root:
+Point your editor at the running board (no subprocess needed).
+
+**Claude Code** — `claude mcp add --transport http inady-kanban http://localhost:7373/mcp`, or add to `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "inady-kanban": {
-      "command": "npx",
-      "args": ["tsx", "mcp-server.ts"],
-      "env": { "INADY_KANBAN_URL": "http://localhost:7373" }
+      "type": "http",
+      "url": "http://localhost:7373/mcp"
     }
   }
 }
 ```
 
-`INADY_KANBAN_URL` is optional — it defaults to the local server. Tickets changed through the MCP need a board reload to show up (same as any external change).
+**Cursor** — add to `.cursor/mcp.json` (Cursor takes a bare `url` for HTTP servers):
+
+```json
+{
+  "mcpServers": {
+    "inady-kanban": {
+      "url": "http://localhost:7373/mcp"
+    }
+  }
+}
+```
+
+Tickets changed through the MCP need a board reload to show up (same as any external change). Prefer a subprocess instead? `npm run mcp` still runs the same tools over **stdio** — set `INADY_KANBAN_URL` to point at the board (defaults to the local server).
 
 </details>
 
 ## How it works
 
-A custom **Next.js + WebSocket server** (`server.ts`) serves the board and streams each agent's terminal. Agents run in server-side **PTYs** piped to an in-browser terminal (xterm.js); data lives in **SQLite** via Drizzle. Every session is a normal **interactive** CLI run — there's no unattended/headless mode, so you always approve what the agent does. Configuration is optional (see [`.env.example`](.env.example)).
+A custom **Next.js + WebSocket server** (`server.ts`) serves the board and streams each agent's terminal. Agents run in server-side **PTYs** piped to an in-browser terminal (xterm.js); data lives in **SQLite** via Drizzle. Every session is a normal **interactive** CLI run — there's no unattended/headless mode. cursor prompts you to approve each action; claude launches in `--permission-mode auto`, which auto-approves some actions without prompting. Configuration is optional (see [`.env.example`](.env.example)).
 
 <details>
 <summary><b>A little more detail</b></summary>
 
 - **Custom server** (`server.ts`, run via `tsx`): a Next.js App Router handler plus a `ws` WebSocket server on one port. Run it with `npm run dev`, **not** `next dev`.
 - **WebSocket** `/ws/terminal/:sessionId`: the client sends `start` / `stdin` / `resize` / `kill`; the server replies `ready` / `stdout` / `exit` / `error`. Closing the tab detaches but keeps the agent running; output is buffered and replayed when you reconnect.
-- **Sessions**: the conversation id is created before launch, so a card always has something to reattach to. New run: `cursor-agent --resume <id> "<prompt>"` / `claude --session-id <id> "<prompt>"`; resume: `--resume <id>`. On an untrusted folder the one-time trust prompt is auto-accepted (it's your own repo).
+- **Sessions**: the conversation id is created before launch, so a card always has something to reattach to. New run: `cursor-agent --resume <id> "<prompt>"` / `claude --session-id <id> --permission-mode auto "<prompt>"`; resume: `--resume <id>` (claude keeps `--permission-mode auto`). On an untrusted folder the one-time trust prompt is auto-accepted (it's your own repo).
 - **Database**: SQLite at `data/kanban.db`. There are no migration files, so `db:push` is the upgrade path.
 
 > ⚠️ **Upgrading an existing DB:** for a new *non-null* column on a table with rows, `db:push` may offer a destructive **"truncate"** — don't accept it; abort and add the column by hand, e.g. `sqlite3 data/kanban.db 'ALTER TABLE agent_sessions ADD COLUMN activity text;'`.

@@ -8,7 +8,8 @@ export const CLAUDE_BIN = process.env.CLAUDE_BIN || "claude";
 /**
  * Everything the PTY layer needs to drive one agent CLI. All sessions are
  * interactive TUIs: the initial launch auto-submits the prompt as a positional
- * arg, and per-command approval stays on (no --force / bypass flags).
+ * arg. Per-CLI approval posture lives in each entry below (cursor keeps
+ * per-command approval; claude launches in --permission-mode auto).
  */
 export interface AgentCli {
   /** Binary to spawn (overridable via env). */
@@ -48,9 +49,11 @@ export const AGENT_CLIS: Record<AgentKind, AgentCli> = {
     bin: CLAUDE_BIN,
     // claude has no create-chat equivalent; we generate the UUID locally and
     // pin it with --session-id on first launch, then --resume it later.
+    // --permission-mode auto on both: it's a per-run setting (not pinned to the
+    // conversation like model/effort), so a resumed session launches the same way.
     buildArgs: ({ sessionId, wrappedPrompt, resume, claudeModel, claudeEffort }) => {
-      if (resume) return ["--resume", sessionId];
-      const args = ["--session-id", sessionId];
+      if (resume) return ["--resume", sessionId, "--permission-mode", "auto"];
+      const args = ["--session-id", sessionId, "--permission-mode", "auto"];
       if (claudeModel) args.push("--model", claudeModel);
       if (claudeEffort) args.push("--effort", claudeEffort);
       args.push(wrappedPrompt);

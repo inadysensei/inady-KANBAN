@@ -34,10 +34,10 @@ describe("cursor CLI", () => {
 describe("claude CLI", () => {
   const claude = AGENT_CLIS.claude;
 
-  test("initial launch pins the pre-issued UUID via --session-id", () => {
+  test("initial launch pins the pre-issued UUID via --session-id in auto permission mode", () => {
     expect(
       claude.buildArgs({ sessionId: ID, wrappedPrompt: "do x", resume: false }),
-    ).toEqual(["--session-id", ID, "do x"]);
+    ).toEqual(["--session-id", ID, "--permission-mode", "auto", "do x"]);
   });
 
   test("initial launch passes claude model and effort flags", () => {
@@ -49,13 +49,23 @@ describe("claude CLI", () => {
         claudeModel: "sonnet",
         claudeEffort: "high",
       }),
-    ).toEqual(["--session-id", ID, "--model", "sonnet", "--effort", "high", "do x"]);
+    ).toEqual([
+      "--session-id",
+      ID,
+      "--permission-mode",
+      "auto",
+      "--model",
+      "sonnet",
+      "--effort",
+      "high",
+      "do x",
+    ]);
   });
 
-  test("resume re-opens the conversation by id", () => {
+  test("resume re-opens the conversation by id in auto permission mode", () => {
     expect(
       claude.buildArgs({ sessionId: ID, wrappedPrompt: "ignored", resume: true }),
-    ).toEqual(["--resume", ID]);
+    ).toEqual(["--resume", ID, "--permission-mode", "auto"]);
   });
 
   test("auto-accepts the folder trust prompt with Enter", () => {
