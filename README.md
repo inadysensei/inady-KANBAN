@@ -42,6 +42,16 @@ Now open **http://localhost:7373**. (Optional: `npm run seed` adds one sample ti
 3. **Start an agent** — on the ticket, start a session and pick **Cursor** or **Claude**. The ticket moves to **Doing**, a terminal opens, and you chat with the agent and approve its actions there.
 4. **Park or finish** — drag a ticket to **WIP** to set it aside, or to **Done** when it's complete. (Re-opening a parked ticket and typing to its agent pulls it back into Doing automatically.)
 5. **Open in your editor** — each ticket has an **Open with** button that launches its folder in your editor.
+6. **Review what changed** — click **Diff** next to the terminal to see the working directory's uncommitted changes (`git diff HEAD`) inline, per file with red/green coloring, without alt-tabbing to a terminal. Files the agent newly created are listed under **New files**. The diff refreshes itself when a session finishes.
+
+<details>
+<summary><b>Diff panel — a few details</b></summary>
+
+The **Diff** panel runs `git diff HEAD` on the ticket's working directory and lists untracked files separately (those are what an agent _added_ — `git diff HEAD` alone never shows them). A non-git folder, or one with no commits yet, simply reads "no diff available"; a clean tree reads "no tracked changes". Very large diffs are truncated with a hint to open the folder in your editor for the rest.
+
+First cut shows the **whole working directory vs. `HEAD`** — it doesn't attribute changes to one session, and it assumes the agent works directly in the repo (not a `--worktree` checkout). Per-session diffs and worktree support are follow-ups.
+
+</details>
 
 <details>
 <summary><b>Repositories & editors — a few details</b></summary>

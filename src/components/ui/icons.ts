@@ -21,6 +21,8 @@ export {
   ChevronDown as MoveDownIcon,
   Check as CheckIcon,
   FolderOpen as FolderIcon,
+  GitCompare as DiffIcon,
+  RefreshCw as RefreshIcon,
   type LucideIcon,
 } from "lucide-react";
 
