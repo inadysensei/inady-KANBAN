@@ -3,7 +3,14 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { createAgentSession, deleteAgentSession } from "@/actions/sessions";
 import { deleteTicket, markTicketDone, resumeTicket } from "@/actions/tickets";
 import ReactMarkdown from "react-markdown";
@@ -38,10 +45,12 @@ import IconButton from "@/components/ui/IconButton";
 import Spinner from "@/components/Spinner";
 import {
   CheckIcon,
+  DiffIcon,
   EditIcon,
   ICON_SIZE_SM,
   TrashIcon,
 } from "@/components/ui/icons";
+import DiffPanel from "./DiffPanel";
 import MemoSection from "./MemoSection";
 import NewAgentPanel from "./NewAgentPanel";
 import OpenWithButton from "./OpenWithButton";
@@ -102,6 +111,7 @@ export default function TicketDetailView({
   const [deleting, startDelete] = useTransition();
   const [markingDone, startMarkDone] = useTransition();
   const [editing, setEditing] = useState(false);
+  const [diffOpen, setDiffOpen] = useState(false);
   const restoredRef = useRef(false);
 
   useEffect(() => {
@@ -163,6 +173,20 @@ export default function TicketDetailView({
   const activeSession = active
     ? (sessionsState.find((s) => s.id === active.sessionDbId) ?? null)
     : null;
+
+  // Re-fetch trigger for the diff panel: a signature over every session that has
+  // reached a terminal state. Both ways an agent ends update sessionsState — the
+  // active terminal's WS `exit` handler and the SSE-driven router.refresh() that
+  // repopulates the `sessions` prop — so when one finishes this string changes
+  // and DiffPanel reloads, with no manual refresh.
+  const diffSignal = useMemo(
+    () =>
+      sessionsState
+        .filter((s) => s.status !== "running")
+        .map((s) => `${s.id}:${s.status}:${s.endedAt ?? ""}`)
+        .join("|"),
+    [sessionsState],
+  );
 
   // Read-only deadline line for the header (editing happens in TicketEditForm).
   const deadlineDays =
@@ -497,19 +521,42 @@ export default function TicketDetailView({
         />
       </section>
 
-      <section className="flex min-h-0 min-w-0 flex-col">
+      <section className="flex min-h-0 min-w-0 flex-col gap-2">
         {active ? (
-          <Terminal
-            key={`${active.sessionDbId}:${active.resume}:${terminalKey}`}
-            sessionDbId={active.sessionDbId}
-            resume={active.resume}
-            activity={activeSession?.activity ?? null}
-            onReady={() => handleSessionReady(active.sessionDbId)}
-            onExit={(code) => handleSessionExit(active.sessionDbId, code)}
-            onRetry={() => setTerminalKey((k) => k + 1)}
-            onFirstInput={handleResumeWork}
-            actions={<OpenWithButton ticketId={ticket.id} editors={editors} />}
-          />
+          <>
+            <Terminal
+              key={`${active.sessionDbId}:${active.resume}:${terminalKey}`}
+              sessionDbId={active.sessionDbId}
+              resume={active.resume}
+              activity={activeSession?.activity ?? null}
+              onReady={() => handleSessionReady(active.sessionDbId)}
+              onExit={(code) => handleSessionExit(active.sessionDbId, code)}
+              onRetry={() => setTerminalKey((k) => k + 1)}
+              onFirstInput={handleResumeWork}
+              actions={
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    aria-expanded={diffOpen}
+                    aria-controls="ticket-diff-panel"
+                    onClick={() => setDiffOpen((v) => !v)}
+                    icon={<DiffIcon size={ICON_SIZE_SM} />}
+                  >
+                    Diff
+                  </Button>
+                  <OpenWithButton ticketId={ticket.id} editors={editors} />
+                </>
+              }
+            />
+            {diffOpen && (
+              <DiffPanel
+                ticketId={ticket.id}
+                refreshSignal={diffSignal}
+                onClose={() => setDiffOpen(false)}
+              />
+            )}
+          </>
         ) : (
           <div className="flex min-h-[480px] flex-1 items-center justify-center rounded-lg border border-dashed border-line text-sm text-faint lg:min-h-0">
             Start a new agent or open a session to see the terminal.

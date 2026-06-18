@@ -12,6 +12,7 @@ import {
 } from "./src/lib/bootstrap";
 import { subscribeSessionEvents } from "./src/lib/board-events";
 import { CURSOR_AGENT_BIN } from "./src/lib/cursor-agent";
+import { collectTicketDiff } from "./src/lib/git-diff";
 import { sweepOrphanAgentProcesses } from "./src/lib/orphan-agent-cleanup";
 import {
   detachSession,
@@ -55,6 +56,8 @@ const CREATE_TICKET_PATH = "/api/tickets";
 // Single ticket by id: GET to read, PATCH to update. The `[^/]+` (no trailing
 // segment) keeps this from matching `/api/tickets/:id/kill-sessions`.
 const TICKET_ID_PATH_RE = /^\/api\/tickets\/([^/]+)$/;
+// Working-dir diff for the in-board review panel: GET runs `git diff HEAD`.
+const TICKET_DIFF_PATH_RE = /^\/api\/tickets\/([^/]+)\/diff$/;
 // Generic ticket-memo ("note") search — see the GET handler below.
 const MEMOS_PATH = "/api/memos";
 const LIVE_COUNT_PATH = "/api/agent-sessions/live-count";
@@ -356,6 +359,40 @@ app.prepare().then(() => {
         res.writeHead(500, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: false, error }));
       }
+      return;
+    }
+
+    // In-board diff review: run `git diff HEAD` (+ untracked files) on the
+    // ticket's working dir. The server's first git integration — collectTicketDiff
+    // keeps node:child_process out of the client/Server-Action bundles, no-ops
+    // on non-git dirs (status "not-applicable"), and byte-caps the payload.
+    const diffMatch = TICKET_DIFF_PATH_RE.exec(pathname);
+    if (diffMatch && req.method === "GET") {
+      let id: string;
+      try {
+        id = decodeURIComponent(diffMatch[1]);
+      } catch {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: "invalid ticket id" }));
+        return;
+      }
+      void (async () => {
+        try {
+          const ticket = getTicket(id);
+          if (!ticket) {
+            res.writeHead(404, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ ok: false, error: "ticket not found" }));
+            return;
+          }
+          const payload = await collectTicketDiff(ticket.workingDir);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: true, ...payload }));
+        } catch (err) {
+          const error = err instanceof Error ? err.message : String(err);
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: false, error }));
+        }
+      })();
       return;
     }
 
