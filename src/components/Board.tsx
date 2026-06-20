@@ -28,6 +28,7 @@ import { STATUS_LABELS } from "@/lib/ticket-display";
 import type { Ticket } from "@/db/schema";
 import { TICKET_STATUSES } from "@/db/schema";
 import Column from "./Column";
+import IceBoxTile from "./IceBoxTile";
 
 /**
  * Prefer the droppable the pointer is actually inside (`pointerWithin`) so a
@@ -47,11 +48,18 @@ const collisionDetection: CollisionDetection = (args) => {
     : closestCorners(args);
 };
 
+// Statuses rendered as full drag-and-drop columns. Ice Box is excluded — it's a
+// count-only tile (IceBoxTile) linking to /icebox, not a column. The drag math
+// still groups over the *full* TICKET_STATUSES so the empty "icebox" bucket
+// exists and a drop onto the tile resolves to a move there.
+const COLUMN_STATUSES = TICKET_STATUSES.filter((s) => s !== "icebox");
+
 export default function Board({
   tickets,
   sessionCounts,
   ticketTags,
   doneTotal,
+  iceboxTotal,
   dateFormat,
   now,
 }: {
@@ -60,6 +68,8 @@ export default function Board({
   /** ticketId → its tag chips (board display). */
   ticketTags: Record<string, TagChip[]>;
   doneTotal: number;
+  /** Count behind the Ice Box tile (those tickets aren't in `tickets`). */
+  iceboxTotal: number;
   dateFormat: DateFormat;
   /** Server render time, for the deadline countdown (see page.tsx). */
   now: number;
@@ -149,7 +159,9 @@ export default function Board({
           </p>
         )}
         <div className="flex w-full min-h-0 min-w-0 flex-1 gap-4 overflow-x-auto pb-4">
-          {TICKET_STATUSES.map((status) => (
+          {/* Freezer before the backlog: a count-only, droppable tile. */}
+          <IceBoxTile count={iceboxTotal} />
+          {COLUMN_STATUSES.map((status) => (
             <Column
               key={status}
               status={status}

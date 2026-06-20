@@ -11,6 +11,7 @@ progresses, and each card can run real agent sessions in a live terminal.
 
 - 🧑‍💻 **Run agents from a board** — start a `cursor-agent` or `claude` session on any card; it runs in a real terminal right in your browser.
 - 🗂️ **Kanban flow** — starting an agent moves a card to **Doing**; **WIP** is a parking lot for things you set aside; you drag to **Done** when you're happy.
+- 🧊 **Ice Box** — freeze "someday, not now" items off the board: drag a card onto the **Ice Box** tile and it collapses to just a count; revive it to To Do from the Ice Box page when you're ready.
 - 🧵 **Many sessions per card, always live** — run several agents per task and reconnect whenever; sessions keep running in the background even if you close the tab.
 - 🟢 **See who needs you** — at a glance, tell whether an agent is **working** or **waiting for your input** (with optional hooks).
 - 🤖 **Agents can manage the board** — a built-in MCP server lets an agent create and update tickets itself.
@@ -40,7 +41,7 @@ Now open **http://localhost:7373**. (Optional: `npm run seed` adds one sample ti
 1. **Add a repository** — open **Settings → Repositories** and add the folder your agents should work in (type a path, or **Browse…** on macOS). You need at least one before you can create a ticket.
 2. **Create a ticket** — click **New ticket**, give it a title, choose the repository, and describe what you want done.
 3. **Start an agent** — on the ticket, start a session and pick **Cursor** or **Claude**. The ticket moves to **Doing**, a terminal opens, and you chat with the agent and approve its actions there.
-4. **Park or finish** — drag a ticket to **WIP** to set it aside, or to **Done** when it's complete. (Re-opening a parked ticket and typing to its agent pulls it back into Doing automatically.)
+4. **Park or finish** — drag a ticket to **WIP** to set it aside, or to **Done** when it's complete. (Re-opening a parked ticket and typing to its agent pulls it back into Doing automatically.) To freeze a "not now" item off the board entirely, drag it onto the **Ice Box** tile next to To Do; open the **Ice Box** page to see those tickets and **Move to To Do** to revive one.
 5. **Open in your editor** — each ticket has an **Open with** button that launches its folder in your editor.
 6. **Review what changed** — click **Diff** next to the terminal to see the working directory's uncommitted changes (`git diff HEAD`) inline, per file with red/green coloring, without alt-tabbing to a terminal. Files the agent newly created are listed under **New files**. The diff refreshes itself when a session finishes.
 

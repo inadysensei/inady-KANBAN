@@ -23,6 +23,7 @@ export {
   FolderOpen as FolderIcon,
   GitCompare as DiffIcon,
   RefreshCw as RefreshIcon,
+  Snowflake as IceBoxIcon,
   type LucideIcon,
 } from "lucide-react";
 

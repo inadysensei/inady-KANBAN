@@ -144,9 +144,10 @@ export function getTicket(id: string): Ticket | undefined {
 
 /**
  * Tickets, optionally filtered by status, ordered the way the board reads
- * top-to-bottom: by column (todo → doing → wip → done) then by in-column
- * `position`. Like `getTicket` this is the single read path the GET /api/tickets
- * endpoints (and thus the MCP server) share with any in-process caller.
+ * top-to-bottom: by column (todo → doing → wip → done → icebox) then by
+ * in-column `position`. Like `getTicket` this is the single read path the GET
+ * /api/tickets endpoints (and thus the MCP server) share with any in-process
+ * caller.
  */
 export function listTickets(filter?: { status?: TicketStatus }): Ticket[] {
   const rows = filter?.status
