@@ -20,6 +20,9 @@ const HEADER_TONE: Record<TicketStatus, string> = {
   doing: "bg-accent/15 text-accent",
   wip: "bg-warn/15 text-warn",
   done: "bg-ok/15 text-ok",
+  // Ice Box is never rendered as a Column (it's the count-only IceBoxTile); this
+  // entry exists only to satisfy the Record<TicketStatus> type.
+  icebox: "bg-panel text-muted",
 };
 
 export default function Column({

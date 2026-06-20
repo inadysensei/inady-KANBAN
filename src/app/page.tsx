@@ -1,4 +1,4 @@
-import { asc, count, desc, eq, ne } from "drizzle-orm";
+import { asc, count, desc, eq, notInArray } from "drizzle-orm";
 import {
   listTags,
   listTaskTemplates,
@@ -22,10 +22,12 @@ export const dynamic = "force-dynamic";
 const DONE_LIMIT = 10;
 
 export default function HomePage() {
+  // The board shows the four working columns. Done is fetched separately
+  // (latest N + a total); Ice Box is collapsed to just `iceboxTotal` below.
   const active = db
     .select()
     .from(tickets)
-    .where(ne(tickets.status, "done"))
+    .where(notInArray(tickets.status, ["done", "icebox"]))
     .orderBy(asc(tickets.position))
     .all();
   const done = db
@@ -40,6 +42,13 @@ export default function HomePage() {
       .select({ value: count() })
       .from(tickets)
       .where(eq(tickets.status, "done"))
+      .get()?.value ?? 0;
+  // Ice Box is count-only on the board (its tickets live on /icebox).
+  const iceboxTotal =
+    db
+      .select({ value: count() })
+      .from(tickets)
+      .where(eq(tickets.status, "icebox"))
       .get()?.value ?? 0;
 
   // Per-ticket agent status badges: one grouped query, folded into a record.
@@ -85,6 +94,7 @@ export default function HomePage() {
         sessionCounts={sessionCounts}
         ticketTags={ticketTags}
         doneTotal={doneTotal}
+        iceboxTotal={iceboxTotal}
         dateFormat={dateFormat}
         now={now}
       />

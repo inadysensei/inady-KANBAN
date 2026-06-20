@@ -8,7 +8,7 @@ import {
   tallySessionCounts,
 } from "./board-order";
 
-const STATUSES: TicketStatus[] = ["todo", "doing", "wip", "done"];
+const STATUSES: TicketStatus[] = ["todo", "doing", "wip", "done", "icebox"];
 
 function ticket(
   id: string,
@@ -94,6 +94,28 @@ describe("computeDragResult — cross column", () => {
     expect(computeDragResult(g, "a", "done")).toEqual({
       kind: "move",
       update: { id: "a", status: "done", position: 1 },
+    });
+  });
+});
+
+describe("computeDragResult — Ice Box (count-only tile)", () => {
+  test("dropping a card onto the Ice Box column id parks it (move, status=icebox)", () => {
+    // The board excludes Ice Box tickets, so the `icebox` bucket groupByStatus
+    // builds is always empty — a drop onto the tile lands at position 1. This is
+    // what makes the droppable `id:"icebox"` tile route through the normal math.
+    const g = group(ticket("a", "todo", 1), ticket("b", "todo", 2));
+    expect(computeDragResult(g, "a", "icebox")).toEqual({
+      kind: "move",
+      update: { id: "a", status: "icebox", position: 1 },
+    });
+  });
+
+  test("dropping a card onto a different empty column still works alongside icebox", () => {
+    // Guards that widening the status set didn't disturb other empty-column drops.
+    const g = group(ticket("a", "todo", 1));
+    expect(computeDragResult(g, "a", "wip")).toEqual({
+      kind: "move",
+      update: { id: "a", status: "wip", position: 1 },
     });
   });
 });

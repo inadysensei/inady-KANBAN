@@ -15,8 +15,11 @@ export const tickets = sqliteTable(
     description: text("description").notNull().default(""),
     // Internal notes (e.g. Slack URLs) — never sent to agent prompts.
     memo: text("memo").notNull().default(""),
+    // "icebox" is a freezer for not-yet-started items — collapsed to a count on
+    // the board, revived from /icebox. A drizzle text enum is type-level only
+    // (the column is plain text), so adding a value needs no db:push migration.
     status: text("status", {
-      enum: ["todo", "doing", "wip", "done"],
+      enum: ["todo", "doing", "wip", "done", "icebox"],
     }).notNull(),
     workingDir: text("working_dir").notNull(),
     // Fractional ordering within a column. Insert between neighbors by
@@ -277,11 +280,16 @@ export type SessionStatus = AgentSession["status"];
 /** Hook-reported activity overlay on a running session (null = no hook). */
 export type SessionActivity = NonNullable<AgentSession["activity"]>;
 
+// Full status set, used for grouping + drag math (groupByStatus needs every
+// bucket — including the empty "icebox" one — so a drop onto the Ice Box tile
+// resolves). The board renders only a subset as draggable columns; Ice Box is a
+// count-only tile (see IceBoxTile / Board.tsx).
 export const TICKET_STATUSES: TicketStatus[] = [
   "todo",
   "doing",
   "wip",
   "done",
+  "icebox",
 ];
 
 export const AGENT_KINDS: AgentKind[] = ["cursor", "claude"];

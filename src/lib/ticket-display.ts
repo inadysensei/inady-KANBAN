@@ -6,4 +6,5 @@ export const STATUS_LABELS: Record<TicketStatus, string> = {
   doing: "Doing",
   wip: "WIP",
   done: "Done",
+  icebox: "Ice Box",
 };

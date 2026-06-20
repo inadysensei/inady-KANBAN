@@ -25,6 +25,12 @@ import {
   apiUpdateTicket,
   type KanbanClientConfig,
 } from "./inady-kanban-mcp-client";
+import { TICKET_STATUSES, type TicketStatus } from "../db/schema";
+
+// Derive the tool's status enum from the schema's single source of truth so it
+// can't drift from the HTTP layer (server.ts validates `?status=` against the
+// same TICKET_STATUSES). zod's enum wants a non-empty literal tuple.
+const TICKET_STATUS_ENUM = TICKET_STATUSES as [TicketStatus, ...TicketStatus[]];
 
 /** Run a tool body, returning its result as JSON text (or a clear error). */
 async function toolResult(
@@ -59,13 +65,13 @@ export function createMcpServer(config: KanbanClientConfig = {}): McpServer {
       title: "List inady KANBAN tickets",
       description:
         "List inady KANBAN board tickets, newest column first (To Do → Doing → " +
-        "WIP → Done) then by in-column order. Optionally filter to one column " +
-        "with `status`. Returns an array of ticket rows (id, title, description, " +
-        "status, workingDir, position, timestamps). Use this to find a ticket's " +
-        "id before reading or updating it.",
+        "WIP → Done → Ice Box) then by in-column order. Optionally filter to one " +
+        "column with `status`. Returns an array of ticket rows (id, title, " +
+        "description, status, workingDir, position, timestamps). Use this to find " +
+        "a ticket's id before reading or updating it.",
       inputSchema: {
         status: z
-          .enum(["todo", "doing", "wip", "done"])
+          .enum(TICKET_STATUS_ENUM)
           .optional()
           .describe("Only return tickets in this column. Omit to list all."),
       },

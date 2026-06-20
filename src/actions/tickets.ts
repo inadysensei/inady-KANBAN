@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, inArray, max, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
 import { TICKET_STATUSES, tickets } from "@/db/schema";
@@ -101,6 +101,38 @@ export async function moveTicket(
   revalidatePath("/");
 }
 
+/**
+ * Revive an Ice Box ticket: move it to the end of To Do (max To Do position + 1).
+ * The Ice Box is a count-only column with no order, so there's no source slot to
+ * preserve — the ticket simply lands after the last To Do card. Mirrors a board
+ * drag's status write but also revalidates /icebox so the list page drops the
+ * row. No-op (and no revalidate) for a ticket that isn't in the Ice Box, so the
+ * /icebox button can't yank an already-active ticket around.
+ */
+export async function moveTicketToTodo(id: string): Promise<void> {
+  const ticket = db.select().from(tickets).where(eq(tickets.id, id)).get();
+  if (!ticket || ticket.status !== "icebox") return;
+
+  const now = Date.now();
+  const maxPosition =
+    db
+      .select({ value: max(tickets.position) })
+      .from(tickets)
+      .where(eq(tickets.status, "todo"))
+      .get()?.value ?? 0;
+  db.update(tickets)
+    .set({
+      status: "todo",
+      position: maxPosition + 1,
+      updatedAt: now,
+      doneAt: doneAtFor("todo", now),
+    })
+    .where(eq(tickets.id, id))
+    .run();
+  revalidatePath("/");
+  revalidatePath("/icebox");
+}
+
 /** Renumber a column to integer positions 1..n (rebalance / explicit reorder). */
 export async function reorderColumn(
   status: TicketStatus,
@@ -155,5 +187,8 @@ export async function deleteTicket(id: string): Promise<void> {
   // agent_sessions rows cascade-delete (FK ON DELETE CASCADE). Callers must
   // POST /api/tickets/:id/kill-sessions first — this action cannot reach PTYs.
   db.delete(tickets).where(eq(tickets.id, id)).run();
+  // Refresh both ticket-listing views — a ticket may be deleted from the board
+  // or from the Ice Box list.
   revalidatePath("/");
+  revalidatePath("/icebox");
 }
