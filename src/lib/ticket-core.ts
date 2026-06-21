@@ -3,6 +3,7 @@ import { eq, max, sql } from "drizzle-orm";
 import { db } from "../db/client";
 import { TICKET_STATUSES, tags, ticketMemos, ticketTags, tickets } from "../db/schema";
 import type { Ticket, TicketStatus } from "../db/schema";
+import { publishTicketEvent } from "./board-events";
 import { resolveTagIds } from "./tags";
 import { assertValidWorkingDir } from "./working-dirs";
 
@@ -28,7 +29,11 @@ export interface CreateTicketInput {
  * graphs — Next's bundle and the tsx-run custom server. Status is always
  * `todo`; position = max(todo position) + 1; the memo flows into a
  * `ticket_memos` row (NOT the legacy `tickets.memo` column). Does NOT call
- * revalidatePath — request-context callers (the action) do that themselves.
+ * revalidatePath — request-context callers (the action) do that themselves; but
+ * it DOES publish a `TicketEvent` on the shared board bus so *other* open tabs
+ * auto-refresh (revalidatePath only updates the acting tab). Co-locating the
+ * broadcast here — the single create path — is why a board click, the HTTP API,
+ * and the MCP all reach other tabs without each remembering to publish.
  */
 export async function insertTicket(
   input: CreateTicketInput,
@@ -76,6 +81,7 @@ export async function insertTicket(
     attachTags(tx, id, input.tagIds ?? []);
   });
 
+  publishTicketEvent({ kind: "ticket", ticketId: id, action: "created" });
   return { id };
 }
 
@@ -177,7 +183,9 @@ export interface UpdateTicketFieldsInput {
  * wraps this (+ tag replacement + revalidatePath); the PATCH /api/tickets/:id
  * endpoint (server.ts) calls it directly — so the board edit form and an MCP
  * client update tickets through the exact same logic. Tags are a separate
- * concern, handled by setTicketTags. Does NOT call revalidatePath.
+ * concern, handled by setTicketTags. Does NOT call revalidatePath, but — like
+ * insertTicket — publishes a `TicketEvent` (only when a row actually matched) so
+ * other open tabs auto-refresh.
  */
 export async function updateTicketFields(
   id: string,
@@ -198,5 +206,9 @@ export async function updateTicketFields(
   if (patch.deadline !== undefined) set.deadline = patch.deadline;
 
   db.update(tickets).set(set).where(eq(tickets.id, id)).run();
-  return getTicket(id);
+  const updated = getTicket(id);
+  if (updated) {
+    publishTicketEvent({ kind: "ticket", ticketId: id, action: "updated" });
+  }
+  return updated;
 }

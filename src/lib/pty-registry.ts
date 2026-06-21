@@ -136,6 +136,7 @@ function publishForSession(
     .get();
   if (!ticket) return;
   publishSessionEvent({
+    kind: "session",
     sessionDbId: session.id,
     ticketId: ticket.id,
     ticketTitle: ticket.title,

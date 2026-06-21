@@ -9,6 +9,7 @@ import {
 
 function event(partial: Partial<SessionEvent>): SessionEvent {
   return {
+    kind: "session",
     sessionDbId: partial.sessionDbId ?? "s1",
     ticketId: partial.ticketId ?? "t1",
     ticketTitle: partial.ticketTitle ?? "Ticket",

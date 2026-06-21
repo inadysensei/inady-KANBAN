@@ -161,7 +161,7 @@ Point your editor at the running board (no subprocess needed).
 }
 ```
 
-Tickets changed through the MCP need a board reload to show up (same as any external change). Prefer a subprocess instead? `npm run mcp` still runs the same tools over **stdio** — set `INADY_KANBAN_URL` to point at the board (defaults to the local server).
+Tickets changed through the MCP (or any external `POST`/`PATCH` to `/api/tickets`) **auto-refresh the open board** — the write broadcasts a ticket event on the same SSE bus the board already listens to, so no manual reload. Prefer a subprocess instead? `npm run mcp` still runs the same tools over **stdio** — set `INADY_KANBAN_URL` to point at the board (defaults to the local server).
 
 </details>
 
