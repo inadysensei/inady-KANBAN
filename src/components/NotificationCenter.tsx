@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AGENT_LOGOS } from "@/lib/agent-display";
-import type { SessionEvent } from "@/lib/board-events";
+import type { BoardEvent, SessionEvent } from "@/lib/board-events";
 import {
   formatBadgeCount,
   nextUnreadCount,
@@ -177,13 +177,16 @@ export default function NotificationCenter() {
 
     const source = new EventSource("/api/events");
     source.onmessage = (message) => {
-      let event: SessionEvent;
+      let event: BoardEvent;
       try {
-        event = JSON.parse(message.data) as SessionEvent;
+        event = JSON.parse(message.data) as BoardEvent;
       } catch {
         return; // ignore malformed frames
       }
+      // Every frame refreshes the board; only session events reach the
+      // notification / unread-badge path (ticket events refresh only).
       scheduleRefresh();
+      if (event.kind !== "session") return;
       if (!shouldNotify(event)) return;
       notify(event);
       // Functional update + document.hidden read avoids a stale closure and

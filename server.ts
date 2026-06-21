@@ -10,7 +10,7 @@ import {
   bootstrapDefaults,
   migrateLegacyTicketStatuses,
 } from "./src/lib/bootstrap";
-import { subscribeSessionEvents } from "./src/lib/board-events";
+import { subscribeBoardEvents } from "./src/lib/board-events";
 import { CURSOR_AGENT_BIN } from "./src/lib/cursor-agent";
 import { collectTicketDiff } from "./src/lib/git-diff";
 import { sweepOrphanAgentProcesses } from "./src/lib/orphan-agent-cleanup";
@@ -307,6 +307,8 @@ app.prepare().then(() => {
           });
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ ok: true, id }));
+          // insertTicket already broadcast a TicketEvent on the board bus, so
+          // open boards auto-refresh (this endpoint has no revalidatePath).
         } catch (err) {
           const error = err instanceof Error ? err.message : String(err);
           res.writeHead(400, { "Content-Type": "application/json" });
@@ -462,6 +464,8 @@ app.prepare().then(() => {
           }
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ ok: true, ticket }));
+          // updateTicketFields already broadcast a TicketEvent — open boards
+          // refresh over the bus (this endpoint has no revalidatePath).
         } catch (err) {
           const error = err instanceof Error ? err.message : String(err);
           res.writeHead(400, { "Content-Type": "application/json" });
@@ -497,7 +501,7 @@ app.prepare().then(() => {
       });
       writeFrame(": connected\n\n");
 
-      const unsubscribe = subscribeSessionEvents((event) => {
+      const unsubscribe = subscribeBoardEvents((event) => {
         writeFrame(`data: ${JSON.stringify(event)}\n\n`);
       });
       // Keep intermediaries (and EventSource itself) from timing out the stream.
