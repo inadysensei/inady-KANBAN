@@ -5,7 +5,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import type { Ticket, TicketStatus } from "@/db/schema";
+import type { Tag, Ticket, TicketStatus } from "@/db/schema";
 import type { SessionStatusCounts } from "@/lib/board-order";
 import type { DateFormat } from "@/lib/date-format";
 import type { TagChip } from "@/lib/tags";
@@ -31,6 +31,7 @@ export default function Column({
   tickets,
   sessionCounts,
   ticketTags,
+  allTags,
   totalOverride,
   dateFormat,
   now,
@@ -41,6 +42,8 @@ export default function Column({
   sessionCounts: Record<string, SessionStatusCounts>;
   /** ticketId → its tag chips (board display). */
   ticketTags: Record<string, TagChip[]>;
+  /** Every configured tag — for each card's on-card tag editor. */
+  allTags: Tag[];
   /** When the column is truncated (Done shows only the latest N), the true
    *  total — rendered as "shown / total". */
   totalOverride?: number;
@@ -85,6 +88,7 @@ export default function Column({
               ticket={t}
               sessionCounts={sessionCounts[t.id]}
               tags={ticketTags[t.id]}
+              allTags={allTags}
               dateFormat={dateFormat}
               now={now}
             />

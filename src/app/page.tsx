@@ -93,6 +93,7 @@ export default function HomePage() {
         tickets={[...active, ...done]}
         sessionCounts={sessionCounts}
         ticketTags={ticketTags}
+        allTags={allTags}
         doneTotal={doneTotal}
         iceboxTotal={iceboxTotal}
         dateFormat={dateFormat}

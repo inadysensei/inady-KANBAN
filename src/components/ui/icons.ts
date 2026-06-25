@@ -24,6 +24,7 @@ export {
   GitCompare as DiffIcon,
   RefreshCw as RefreshIcon,
   Snowflake as IceBoxIcon,
+  Tag as TagIcon,
   type LucideIcon,
 } from "lucide-react";
 
