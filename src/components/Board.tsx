@@ -25,7 +25,7 @@ import {
 import type { DateFormat } from "@/lib/date-format";
 import type { TagChip } from "@/lib/tags";
 import { STATUS_LABELS } from "@/lib/ticket-display";
-import type { Ticket } from "@/db/schema";
+import type { Tag, Ticket } from "@/db/schema";
 import { TICKET_STATUSES } from "@/db/schema";
 import Column from "./Column";
 import IceBoxTile from "./IceBoxTile";
@@ -58,6 +58,7 @@ export default function Board({
   tickets,
   sessionCounts,
   ticketTags,
+  allTags,
   doneTotal,
   iceboxTotal,
   dateFormat,
@@ -67,6 +68,8 @@ export default function Board({
   sessionCounts: Record<string, SessionStatusCounts>;
   /** ticketId → its tag chips (board display). */
   ticketTags: Record<string, TagChip[]>;
+  /** Every configured tag — for each card's on-card tag editor. */
+  allTags: Tag[];
   doneTotal: number;
   /** Count behind the Ice Box tile (those tickets aren't in `tickets`). */
   iceboxTotal: number;
@@ -169,6 +172,7 @@ export default function Board({
               tickets={displayByStatus[status]}
               sessionCounts={sessionCounts}
               ticketTags={ticketTags}
+              allTags={allTags}
               totalOverride={status === "done" ? doneTotal : undefined}
               dateFormat={dateFormat}
               now={now}

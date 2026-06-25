@@ -3,7 +3,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
-import type { Ticket } from "@/db/schema";
+import type { Tag, Ticket } from "@/db/schema";
 import { sessionBadges } from "@/lib/agent-display";
 import type { SessionStatusCounts } from "@/lib/board-order";
 import {
@@ -16,18 +16,22 @@ import type { TagChip } from "@/lib/tags";
 import { cardClass } from "@/lib/ui-classes";
 import SessionStatusIndicator from "@/components/SessionStatusIndicator";
 import TagBadge from "@/components/TagBadge";
+import TicketTagEditor from "@/components/TicketTagEditor";
 import { DragIcon, ICON_SIZE } from "@/components/ui/icons";
 
 export default function TicketCard({
   ticket,
   sessionCounts,
   tags,
+  allTags,
   dateFormat,
   now,
 }: {
   ticket: Ticket;
   sessionCounts?: SessionStatusCounts;
   tags?: TagChip[];
+  /** Every configured tag — for the on-card tag editor's picker. */
+  allTags: Tag[];
   dateFormat: DateFormat;
   now: number;
 }) {
@@ -80,64 +84,79 @@ export default function TicketCard({
       >
         <DragIcon size={ICON_SIZE} />
       </button>
-      <Link href={`/tickets/${ticket.id}`} className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium text-fg">{ticket.title}</div>
-        <div
-          className="truncate font-mono text-[11px] text-muted"
-          title={ticket.workingDir}
-        >
-          {ticket.workingDir}
-        </div>
-        {tags && tags.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            {tags.map((tag) => (
-              <TagBadge key={tag.id} tag={tag} size="xs" />
-            ))}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Link href={`/tickets/${ticket.id}`} className="min-w-0">
+          <div className="truncate text-sm font-medium text-fg">
+            {ticket.title}
           </div>
-        )}
-        {deadlineDays != null && ticket.deadline != null && (
-          <div className="mt-1 flex justify-end">
-            <time
-              dateTime={new Date(ticket.deadline).toISOString()}
-              className={`text-[10px] font-medium ${deadlineTone}`}
-            >
-              Due {formatDate(ticket.deadline, dateFormat)} ·{" "}
-              {deadlineLabel(deadlineDays)}
-            </time>
+          <div
+            className="truncate font-mono text-[11px] text-muted"
+            title={ticket.workingDir}
+          >
+            {ticket.workingDir}
           </div>
-        )}
-        <div className="mt-1 flex flex-wrap justify-end gap-x-2 text-right text-[10px] text-faint">
-          <time dateTime={new Date(ticket.createdAt).toISOString()}>
-            Created {formatDate(ticket.createdAt, dateFormat)}
-          </time>
-          {ticket.status === "done" && ticket.doneAt != null && (
-            <time dateTime={new Date(ticket.doneAt).toISOString()}>
-              Done {formatDate(ticket.doneAt, dateFormat)}
-            </time>
+          {tags && tags.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {tags.map((tag) => (
+                <TagBadge key={tag.id} tag={tag} size="xs" />
+              ))}
+            </div>
           )}
-        </div>
-        {badges.length > 0 && (
-          <div className="mt-1 flex flex-wrap items-center justify-end gap-1">
-            {badges.map(({ key, status, activity, count, visual }) => (
-              <span
-                key={key}
-                title={`${count} ${visual.label}`}
-                aria-label={`${count} ${visual.label}`}
-                className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none ${visual.pill} ${
-                  visual.needsAttention ? "ring-1 ring-current" : ""
-                }`}
+          {deadlineDays != null && ticket.deadline != null && (
+            <div className="mt-1 flex justify-end">
+              <time
+                dateTime={new Date(ticket.deadline).toISOString()}
+                className={`text-[10px] font-medium ${deadlineTone}`}
               >
-                <SessionStatusIndicator
-                  status={status}
-                  activity={activity}
-                  decorative
-                />
-                {count}
-              </span>
-            ))}
+                Due {formatDate(ticket.deadline, dateFormat)} ·{" "}
+                {deadlineLabel(deadlineDays)}
+              </time>
+            </div>
+          )}
+          <div className="mt-1 flex flex-wrap justify-end gap-x-2 text-right text-[10px] text-faint">
+            <time dateTime={new Date(ticket.createdAt).toISOString()}>
+              Created {formatDate(ticket.createdAt, dateFormat)}
+            </time>
+            {ticket.status === "done" && ticket.doneAt != null && (
+              <time dateTime={new Date(ticket.doneAt).toISOString()}>
+                Done {formatDate(ticket.doneAt, dateFormat)}
+              </time>
+            )}
           </div>
-        )}
-      </Link>
+          {badges.length > 0 && (
+            <div className="mt-1 flex flex-wrap items-center justify-end gap-1">
+              {badges.map(({ key, status, activity, count, visual }) => (
+                <span
+                  key={key}
+                  title={`${count} ${visual.label}`}
+                  aria-label={`${count} ${visual.label}`}
+                  className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none ${visual.pill} ${
+                    visual.needsAttention ? "ring-1 ring-current" : ""
+                  }`}
+                >
+                  <SessionStatusIndicator
+                    status={status}
+                    activity={activity}
+                    decorative
+                  />
+                  {count}
+                </span>
+              ))}
+            </div>
+          )}
+        </Link>
+        {/* Edit this ticket's tags from the board — bottom-right, outside the
+            Link so it opens the popup instead of navigating. Extra top margin
+            so the icon doesn't crowd the status badges right above it. */}
+        <div className="mt-2 flex justify-end">
+          <TicketTagEditor
+            ticketId={ticket.id}
+            ticketTitle={ticket.title}
+            allTags={allTags}
+            currentTagIds={(tags ?? []).map((t) => t.id)}
+          />
+        </div>
+      </div>
     </div>
   );
 }
