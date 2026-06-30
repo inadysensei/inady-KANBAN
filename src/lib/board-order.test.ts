@@ -3,9 +3,12 @@ import type { Ticket, TicketStatus } from "../db/schema";
 import {
   computeDragResult,
   groupByStatus,
+  isBoardFilterActive,
   MIN_GAP,
+  narrowColumn,
   orderDoneColumn,
   tallySessionCounts,
+  ticketMatchesQuery,
 } from "./board-order";
 
 const STATUSES: TicketStatus[] = ["todo", "doing", "wip", "done", "icebox"];
@@ -14,20 +17,27 @@ function ticket(
   id: string,
   status: TicketStatus,
   position: number,
-  dates: { createdAt?: number; updatedAt?: number; doneAt?: number } = {},
+  opts: {
+    createdAt?: number;
+    updatedAt?: number;
+    doneAt?: number;
+    title?: string;
+    workingDir?: string;
+    deadline?: number | null;
+  } = {},
 ): Ticket {
   return {
     id,
-    title: id,
+    title: opts.title ?? id,
     description: "",
     memo: "",
     status,
-    workingDir: "/w",
+    workingDir: opts.workingDir ?? "/w",
     position,
-    createdAt: dates.createdAt ?? 0,
-    updatedAt: dates.updatedAt ?? 0,
-    doneAt: dates.doneAt ?? null,
-    deadline: null,
+    createdAt: opts.createdAt ?? 0,
+    updatedAt: opts.updatedAt ?? 0,
+    doneAt: opts.doneAt ?? null,
+    deadline: opts.deadline ?? null,
   };
 }
 
@@ -204,5 +214,84 @@ describe("tallySessionCounts", () => {
 
   test("returns an empty record when there are no rows", () => {
     expect(tallySessionCounts([])).toEqual({});
+  });
+});
+
+describe("ticketMatchesQuery", () => {
+  const t = { title: "Fix login flow", workingDir: "/Users/me/web-app" };
+
+  test("an empty / whitespace query matches everything", () => {
+    expect(ticketMatchesQuery(t, "")).toBe(true);
+    expect(ticketMatchesQuery(t, "   ")).toBe(true);
+  });
+
+  test("case-insensitive substring of the title matches", () => {
+    expect(ticketMatchesQuery(t, "LOGIN")).toBe(true);
+  });
+
+  test("case-insensitive substring of the working dir matches", () => {
+    expect(ticketMatchesQuery(t, "web-app")).toBe(true);
+    expect(ticketMatchesQuery(t, "/users/ME")).toBe(true);
+  });
+
+  test("a query found in neither title nor dir does not match", () => {
+    expect(ticketMatchesQuery(t, "logout")).toBe(false);
+  });
+
+  test("surrounding whitespace in the query is trimmed", () => {
+    expect(ticketMatchesQuery(t, "  login  ")).toBe(true);
+  });
+});
+
+describe("isBoardFilterActive", () => {
+  test("false only when no filter is set", () => {
+    expect(isBoardFilterActive({ query: "", activeTagIds: [] })).toBe(false);
+    expect(isBoardFilterActive({ query: "   ", activeTagIds: [] })).toBe(false);
+  });
+
+  test("true when either filter is set", () => {
+    expect(isBoardFilterActive({ query: "x", activeTagIds: [] })).toBe(true);
+    expect(isBoardFilterActive({ query: "", activeTagIds: ["t"] })).toBe(true);
+  });
+});
+
+describe("narrowColumn", () => {
+  const a = ticket("a", "todo", 1, { title: "Fix login", workingDir: "/app/web" });
+  const b = ticket("b", "todo", 2, { title: "Add logout", workingDir: "/app/api" });
+  const c = ticket("c", "todo", 3, { title: "Write docs", workingDir: "/app/docs" });
+  const column = [a, b, c];
+  const side = {
+    ticketTags: { a: [{ id: "high", name: "High", color: "#ef4444" }], b: [{ id: "low", name: "Low", color: "#22c55e" }] },
+  };
+
+  test("returns the same array reference when no filter is active (board restored)", () => {
+    const out = narrowColumn(column, { query: "", activeTagIds: [] }, side);
+    expect(out).toBe(column);
+  });
+
+  test("search narrows by title/dir substring", () => {
+    const out = narrowColumn(column, { query: "log", activeTagIds: [] }, side);
+    expect(out.map((t) => t.id)).toEqual(["a", "b"]); // "login", "logout"
+  });
+
+  test("tag filter keeps only carriers of an active tag", () => {
+    const out = narrowColumn(column, { query: "", activeTagIds: ["high"] }, side);
+    expect(out.map((t) => t.id)).toEqual(["a"]);
+  });
+
+  test("the two filters compose with AND", () => {
+    // "log" matches a + b; tag High keeps only a — so AND yields a.
+    expect(
+      narrowColumn(column, { query: "log", activeTagIds: ["high"] }, side).map((t) => t.id),
+    ).toEqual(["a"]);
+    // A query that matches none of High's carriers yields nothing.
+    expect(
+      narrowColumn(column, { query: "docs", activeTagIds: ["high"] }, side).map((t) => t.id),
+    ).toEqual([]);
+  });
+
+  test("preserves the input order of the surviving tickets", () => {
+    const out = narrowColumn([c, b, a], { query: "lo", activeTagIds: [] }, side);
+    expect(out.map((t) => t.id)).toEqual(["b", "a"]); // "logout", "login"
   });
 });

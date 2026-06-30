@@ -25,6 +25,7 @@ export {
   RefreshCw as RefreshIcon,
   Snowflake as IceBoxIcon,
   Tag as TagIcon,
+  Search as SearchIcon,
   type LucideIcon,
 } from "lucide-react";
 

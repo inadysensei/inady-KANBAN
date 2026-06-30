@@ -32,6 +32,8 @@ export default function Column({
   sessionCounts,
   ticketTags,
   allTags,
+  activeTagIds,
+  onToggleTag,
   totalOverride,
   dateFormat,
   now,
@@ -44,6 +46,10 @@ export default function Column({
   ticketTags: Record<string, TagChip[]>;
   /** Every configured tag — for each card's on-card tag editor. */
   allTags: Tag[];
+  /** Tag ids in the board filter — threaded to each card's chips. */
+  activeTagIds: string[];
+  /** Toggle a tag in the board filter (a card chip click). */
+  onToggleTag: (tagId: string) => void;
   /** When the column is truncated (Done shows only the latest N), the true
    *  total — rendered as "shown / total". */
   totalOverride?: number;
@@ -89,6 +95,8 @@ export default function Column({
               sessionCounts={sessionCounts[t.id]}
               tags={ticketTags[t.id]}
               allTags={allTags}
+              activeTagIds={activeTagIds}
+              onToggleTag={onToggleTag}
               dateFormat={dateFormat}
               now={now}
             />

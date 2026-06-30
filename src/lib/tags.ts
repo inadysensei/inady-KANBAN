@@ -99,3 +99,22 @@ export function groupTagsByTicket(
   }
   return grouped;
 }
+
+/**
+ * Board tag-filter predicate: does a ticket (by its tag ids) pass the active
+ * tag selection? No active tags ⇒ the filter is off ⇒ everything matches.
+ *
+ * Semantics are **OR** (a ticket matches if it carries *any* active tag), not
+ * AND: the seeded tags are mutually exclusive priorities (High/Mid/Low), so AND
+ * would turn multi-select into a dead end — no ticket is ever both High and Mid.
+ * OR makes adding a tag broaden the view ("show me High *or* Mid"), which is the
+ * useful behavior for narrowing a backlog by clicking chips.
+ */
+export function ticketMatchesTags(
+  ticketTagIds: readonly string[],
+  activeTagIds: readonly string[],
+): boolean {
+  if (activeTagIds.length === 0) return true;
+  const active = new Set(activeTagIds);
+  return ticketTagIds.some((id) => active.has(id));
+}
