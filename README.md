@@ -1,7 +1,7 @@
 # inady KANBAN
 
 A Kanban board you run on your own machine that lets you start and watch
-**Cursor** and **Claude** coding-agent CLIs straight from your browser. Each card
+**Cursor**, **Claude**, and **Cline** coding-agent CLIs straight from your browser. Each card
 is a task; you move it across **To Do → Doing → WIP → Done** as the work
 progresses, and each card can run real agent sessions in a live terminal.
 
@@ -9,7 +9,7 @@ progresses, and each card can run real agent sessions in a live terminal.
 
 ## What it does
 
-- 🧑‍💻 **Run agents from a board** — start a `cursor-agent` or `claude` session on any card; it runs in a real terminal right in your browser.
+- 🧑‍💻 **Run agents from a board** — start a `cursor-agent`, `claude`, or `cline` session on any card; it runs in a real terminal right in your browser.
 - 🗂️ **Kanban flow** — starting an agent moves a card to **Doing**; **WIP** is a parking lot for things you set aside; you drag to **Done** when you're happy.
 - 🧊 **Ice Box** — freeze "someday, not now" items off the board: drag a card onto the **Ice Box** tile and it collapses to just a count; revive it to To Do from the Ice Box page when you're ready.
 - 🧵 **Many sessions per card, always live** — run several agents per task and reconnect whenever; sessions keep running in the background even if you close the tab.
@@ -25,6 +25,7 @@ You need **Node.js** and at least one agent CLI, installed and logged in:
 |---|---|---|
 | **Cursor** | [`cursor-agent`](https://docs.cursor.com/) | `cursor-agent login` |
 | **Claude** | [`claude`](https://docs.claude.com/en/docs/claude-code/overview) | run `claude` once and follow the prompts |
+| **Cline** | [`cline`](https://docs.cline.bot/) | `cline auth` (e.g. [ClinePass](https://docs.cline.bot/getting-started/clinepass)) — **off by default**, enable in Settings → AI tools |
 
 > 💡 On macOS the native modules (`better-sqlite3`, `node-pty`) build from source, so you may need the Xcode Command Line Tools.
 
@@ -40,7 +41,7 @@ Now open **http://localhost:7373**. (Optional: `npm run seed` adds one sample ti
 
 1. **Add a repository** — open **Settings → Repositories** and add the folder your agents should work in (type a path, or **Browse…** on macOS). You need at least one before you can create a ticket.
 2. **Create a ticket** — click **New ticket**, give it a title, choose the repository, and describe what you want done.
-3. **Start an agent** — on the ticket, start a session and pick **Cursor** or **Claude**. The ticket moves to **Doing**, a terminal opens, and you chat with the agent and approve its actions there.
+3. **Start an agent** — on the ticket, start a session and pick **Cursor** or **Claude** (or **Cline**, once enabled in Settings → AI tools). The ticket moves to **Doing**, a terminal opens, and you chat with the agent and approve its actions there.
 4. **Park or finish** — drag a ticket to **WIP** to set it aside, or to **Done** when it's complete. (Re-opening a parked ticket and typing to its agent pulls it back into Doing automatically.) To freeze a "not now" item off the board entirely, drag it onto the **Ice Box** tile next to To Do; open the **Ice Box** page to see those tickets and **Move to To Do** to revive one.
 5. **Open in your editor** — each ticket has an **Open with** button that launches its folder in your editor.
 6. **Review what changed** — click **Diff** next to the terminal to see the working directory's uncommitted changes (`git diff HEAD`) inline, per file with red/green coloring, without alt-tabbing to a terminal. Files the agent newly created are listed under **New files**. The diff refreshes itself when a session finishes.
@@ -167,14 +168,14 @@ Tickets changed through the MCP (or any external `POST`/`PATCH` to `/api/tickets
 
 ## How it works
 
-A custom **Next.js + WebSocket server** (`server.ts`) serves the board and streams each agent's terminal. Agents run in server-side **PTYs** piped to an in-browser terminal (xterm.js); data lives in **SQLite** via Drizzle. Every session is a normal **interactive** CLI run — there's no unattended/headless mode. cursor prompts you to approve each action; claude launches in `--permission-mode auto`, which auto-approves some actions without prompting. Configuration is optional (see [`.env.example`](.env.example)).
+A custom **Next.js + WebSocket server** (`server.ts`) serves the board and streams each agent's terminal. Agents run in server-side **PTYs** piped to an in-browser terminal (xterm.js); data lives in **SQLite** via Drizzle. Every session is a normal **interactive** CLI run — there's no unattended/headless mode. cursor prompts you to approve each action; claude launches in `--permission-mode auto` and cline in `--auto-approve true`, which auto-approve actions without prompting. Configuration is optional (see [`.env.example`](.env.example)).
 
 <details>
 <summary><b>A little more detail</b></summary>
 
 - **Custom server** (`server.ts`, run via `tsx`): a Next.js App Router handler plus a `ws` WebSocket server on one port. Run it with `npm run dev`, **not** `next dev`.
 - **WebSocket** `/ws/terminal/:sessionId`: the client sends `start` / `stdin` / `resize` / `kill`; the server replies `ready` / `stdout` / `exit` / `error`. Closing the tab detaches but keeps the agent running; output is buffered and replayed when you reconnect.
-- **Sessions**: the conversation id is created before launch, so a card always has something to reattach to. New run: `cursor-agent --resume <id> "<prompt>"` / `claude --session-id <id> --permission-mode auto "<prompt>"`; resume: `--resume <id>` (claude keeps `--permission-mode auto`). On an untrusted folder the one-time trust prompt is auto-accepted (it's your own repo).
+- **Sessions**: the conversation id is created before launch, so a card always has something to reattach to. New run: `cursor-agent --resume <id> "<prompt>"` / `claude --session-id <id> --permission-mode auto "<prompt>"` / `cline -i --auto-approve true -P cline-pass --id <id> "<prompt>"`; resume drops the prompt (claude keeps `--permission-mode auto`, cline keeps `-i`/`--id`). On an untrusted folder cursor's/claude's one-time trust prompt is auto-accepted (it's your own repo); cline auto-approves so it has none.
 - **Database**: SQLite at `data/kanban.db`. There are no migration files, so `db:push` is the upgrade path.
 
 > ⚠️ **Upgrading an existing DB:** for a new *non-null* column on a table with rows, `db:push` may offer a destructive **"truncate"** — don't accept it; abort and add the column by hand, e.g. `sqlite3 data/kanban.db 'ALTER TABLE agent_sessions ADD COLUMN activity text;'`.

@@ -11,14 +11,19 @@ import {
 import {
   CLAUDE_EFFORTS,
   CLAUDE_MODELS,
+  CLINE_EFFORTS,
   type ClaudeEffort,
   type ClaudeModel,
+  type ClineEffort,
+  parseClineEffort,
   resolveClaudeLaunchOptions,
   serializeAgentTeamMembers,
 } from "@/lib/agent-launch";
 import {
   writeAgentTools,
   writeClaudeDefaults,
+  writeClineDefaults,
+  writeClineModelSelection,
   writeCursorModelSelection,
   writeDateFormat,
 } from "@/lib/app-settings";
@@ -31,6 +36,10 @@ import {
   type CursorModelSelectionEntry,
   normalizeCursorModelSelection,
 } from "@/lib/cursor-models";
+import {
+  type ClineModelSelectionEntry,
+  normalizeClineModelSelection,
+} from "@/lib/cline-models";
 import { DATE_FORMATS, type DateFormat } from "@/lib/date-format";
 import { assertValidWorkingDir } from "@/lib/working-dirs";
 
@@ -75,6 +84,30 @@ export async function saveCursorModels(
   revalidatePath("/");
 }
 
+export async function saveClineModels(
+  selection: ClineModelSelectionEntry[],
+): Promise<void> {
+  // Same canonicalization contract as saveCursorModels (drops bad/dup entries,
+  // exactly one default, default selection when empty).
+  writeClineModelSelection(normalizeClineModelSelection(selection));
+  revalidatePath("/settings");
+  revalidatePath("/");
+}
+
+export async function saveClineDefaults(input: {
+  effort: ClineEffort;
+}): Promise<void> {
+  // Board-level default `--thinking` level (mirrors saveClaudeDefaults). The
+  // cline model default lives in the cline-models selection, so this carries
+  // effort only.
+  if (!CLINE_EFFORTS.includes(input.effort)) {
+    throw new Error("invalid cline effort");
+  }
+  writeClineDefaults({ effort: input.effort });
+  revalidatePath("/settings");
+  revalidatePath("/");
+}
+
 export async function saveDateFormat(format: DateFormat): Promise<void> {
   if (!DATE_FORMATS.includes(format)) {
     throw new Error("invalid date format");
@@ -97,6 +130,8 @@ export async function saveTaskTemplate(input: {
   claudeModel?: ClaudeModel | null;
   claudeEffort?: ClaudeEffort | null;
   cursorModel?: string | null;
+  clineModel?: string | null;
+  clineEffort?: ClineEffort | null;
 }): Promise<{ id: string }> {
   const name = input.name.trim();
   const title = input.title.trim();
@@ -121,6 +156,12 @@ export async function saveTaskTemplate(input: {
   // default at execution time). Effort is baked into the cursor model id.
   const cursorModel =
     input.agent === "cursor" ? input.cursorModel?.trim() || null : null;
+  // Cline: store the chosen model as-is (or null → resolves to the configured
+  // default at execution time). Effort is a separate --thinking level.
+  const clineModel =
+    input.agent === "cline" ? input.clineModel?.trim() || null : null;
+  const clineEffort =
+    input.agent === "cline" ? parseClineEffort(input.clineEffort) : null;
 
   if (input.id) {
     const existing = db
@@ -142,6 +183,8 @@ export async function saveTaskTemplate(input: {
         claudeModel: claudeLaunch?.model ?? null,
         claudeEffort: claudeLaunch?.effort ?? null,
         cursorModel,
+        clineModel,
+        clineEffort,
         updatedAt: now,
       })
       .where(eq(taskTemplates.id, input.id))
@@ -167,6 +210,8 @@ export async function saveTaskTemplate(input: {
       claudeModel: claudeLaunch?.model ?? null,
       claudeEffort: claudeLaunch?.effort ?? null,
       cursorModel,
+      clineModel,
+      clineEffort,
       position: (last?.p ?? 0) + 1,
       createdAt: now,
       updatedAt: now,

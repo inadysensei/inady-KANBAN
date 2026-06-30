@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { createAgentSession } from "@/actions/sessions";
-import type { ClaudeEffort, ClaudeModel } from "@/lib/agent-launch";
+import type { ClaudeEffort, ClaudeModel, ClineEffort } from "@/lib/agent-launch";
 import type { CursorModelChoices } from "@/lib/cursor-models";
+import type { ClineModelChoices } from "@/lib/cline-models";
 import type { AgentKind, TeamTemplate } from "@/db/schema";
 import { AGENT_KINDS } from "@/db/schema";
 import { cardClass } from "@/lib/ui-classes";
@@ -20,6 +21,8 @@ export default function NewAgentPanel({
   ticketId,
   claudeDefaults,
   cursorModelChoices,
+  clineModelChoices,
+  clineDefaults,
   teamTemplates,
   agents = AGENT_KINDS,
   onStarted,
@@ -27,6 +30,8 @@ export default function NewAgentPanel({
   ticketId: string;
   claudeDefaults: { model: ClaudeModel; effort: ClaudeEffort };
   cursorModelChoices: CursorModelChoices;
+  clineModelChoices: ClineModelChoices;
+  clineDefaults: { effort: ClineEffort };
   teamTemplates: TeamTemplate[];
   /** Enabled tools (Settings), in display order. */
   agents?: AgentKind[];
@@ -38,6 +43,8 @@ export default function NewAgentPanel({
     claudeModel: claudeDefaults.model,
     claudeEffort: claudeDefaults.effort,
     cursorModel: cursorModelChoices.default,
+    clineModel: clineModelChoices.default,
+    clineEffort: clineDefaults.effort,
     useAgentTeam: false,
     agentTeamMembers: emptyTeamSlots(),
     worktree: false,
@@ -66,6 +73,10 @@ export default function NewAgentPanel({
             values.agent === "claude" ? values.claudeEffort : undefined,
           cursorModel:
             values.agent === "cursor" ? values.cursorModel : undefined,
+          clineModel:
+            values.agent === "cline" ? values.clineModel : undefined,
+          clineEffort:
+            values.agent === "cline" ? values.clineEffort : undefined,
           worktree: values.worktree,
         });
         setValues((prev) => ({ ...prev, prompt: DEFAULT_PROMPT }));
@@ -85,6 +96,8 @@ export default function NewAgentPanel({
         onChange={setValues}
         claudeDefaults={claudeDefaults}
         cursorModelChoices={cursorModelChoices}
+        clineModelChoices={clineModelChoices}
+        clineDefaults={clineDefaults}
         teamTemplates={teamTemplates}
         agents={agents}
         settingsHref="/settings#team-templates"

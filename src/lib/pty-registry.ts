@@ -21,7 +21,11 @@ import { publishSessionEvent } from "./board-events";
 import { serverBaseUrl } from "./server-config";
 import { scheduleProcessTermination } from "./process-terminate";
 import { AGENT_CLIS } from "./agent-cli";
-import { parseClaudeEffort, parseClaudeModel } from "./agent-launch";
+import {
+  parseClaudeEffort,
+  parseClaudeModel,
+  parseClineEffort,
+} from "./agent-launch";
 import { wrapPrompt } from "./prompt";
 
 const { Terminal: TerminalCtor } = xtermHeadless;
@@ -339,6 +343,10 @@ export function startSession(
       ? parseClaudeEffort(session.claudeEffort)
       : undefined,
     cursorModel: session.cursorModel ?? undefined,
+    clineModel: session.clineModel ?? undefined,
+    clineEffort: session.clineEffort
+      ? parseClineEffort(session.clineEffort)
+      : undefined,
     worktree: session.worktree,
   });
 

@@ -13,6 +13,8 @@ import { agentSessions, ticketMemos, tickets } from "@/db/schema";
 import {
   readAgentTools,
   readClaudeDefaults,
+  readClineDefaults,
+  readClineModelChoices,
   readCursorModelChoices,
   readDateFormat,
 } from "@/lib/app-settings";
@@ -51,6 +53,8 @@ export default async function TicketPage({
   const editors = listEditors();
   const claudeDefaults = readClaudeDefaults();
   const cursorModelChoices = readCursorModelChoices();
+  const clineModelChoices = readClineModelChoices();
+  const clineDefaults = readClineDefaults();
   const dateFormat = readDateFormat();
   const agents = enabledAgents(readAgentTools());
   const teamTemplates = listTeamTemplates();
@@ -75,6 +79,8 @@ export default async function TicketPage({
       editors={editors}
       claudeDefaults={claudeDefaults}
       cursorModelChoices={cursorModelChoices}
+      clineModelChoices={clineModelChoices}
+      clineDefaults={clineDefaults}
       teamTemplates={teamTemplates}
       agents={agents}
       initialSessionId={validInitialSessionId}

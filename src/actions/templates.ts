@@ -40,6 +40,8 @@ export async function executeTaskTemplate(
       claudeModel: template.claudeModel,
       claudeEffort: template.claudeEffort,
       cursorModel: template.cursorModel,
+      clineModel: template.clineModel,
+      clineEffort: template.clineEffort,
     });
 
     revalidatePath("/");

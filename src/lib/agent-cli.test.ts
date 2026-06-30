@@ -179,3 +179,123 @@ describe("claude CLI", () => {
     expect(claude.filterOutput(chunk)).toBe(chunk);
   });
 });
+
+describe("cline CLI", () => {
+  const cline = AGENT_CLIS.cline;
+
+  test("initial launch opens the TUI, auto-approves, pins the id, prompt last", () => {
+    // No model/effort → neither -m nor --thinking is emitted.
+    expect(
+      cline.buildArgs({ sessionId: ID, wrappedPrompt: "do x", resume: false }),
+    ).toEqual([
+      "-i",
+      "--auto-approve",
+      "true",
+      "-P",
+      "cline-pass",
+      "--id",
+      ID,
+      "do x",
+    ]);
+  });
+
+  test("initial launch passes the clinepass model and --thinking effort", () => {
+    expect(
+      cline.buildArgs({
+        sessionId: ID,
+        wrappedPrompt: "do x",
+        resume: false,
+        clineModel: "cline-pass/glm-5.2",
+        clineEffort: "high",
+      }),
+    ).toEqual([
+      "-i",
+      "--auto-approve",
+      "true",
+      "-P",
+      "cline-pass",
+      "-m",
+      "cline-pass/glm-5.2",
+      "--thinking",
+      "high",
+      "--id",
+      ID,
+      "do x",
+    ]);
+  });
+
+  test("worktree launch leads with --worktree, keeps the prompt last", () => {
+    expect(
+      cline.buildArgs({
+        sessionId: ID,
+        wrappedPrompt: "do x",
+        resume: false,
+        worktree: true,
+        clineModel: "cline-pass/glm-5.2",
+        clineEffort: "high",
+      }),
+    ).toEqual([
+      "--worktree",
+      "-i",
+      "--auto-approve",
+      "true",
+      "-P",
+      "cline-pass",
+      "-m",
+      "cline-pass/glm-5.2",
+      "--thinking",
+      "high",
+      "--id",
+      ID,
+      "do x",
+    ]);
+  });
+
+  test("resume re-opens by id with no prompt, re-passing model and effort", () => {
+    expect(
+      cline.buildArgs({
+        sessionId: ID,
+        wrappedPrompt: "ignored",
+        resume: true,
+        clineModel: "cline-pass/glm-5.2",
+        clineEffort: "high",
+      }),
+    ).toEqual([
+      "-i",
+      "--auto-approve",
+      "true",
+      "-P",
+      "cline-pass",
+      "-m",
+      "cline-pass/glm-5.2",
+      "--thinking",
+      "high",
+      "--id",
+      ID,
+    ]);
+  });
+
+  test("resume never adds --worktree (it would create a second worktree)", () => {
+    expect(
+      cline.buildArgs({
+        sessionId: ID,
+        wrappedPrompt: "ignored",
+        resume: true,
+        worktree: true,
+      }),
+    ).toEqual(["-i", "--auto-approve", "true", "-P", "cline-pass", "--id", ID]);
+  });
+
+  test("has no workspace-trust prompt to answer (inert matcher)", () => {
+    expect(cline.trustPromptRe.test("Do you trust the files in this folder?")).toBe(
+      false,
+    );
+    expect(cline.trustPromptRe.test("anything at all")).toBe(false);
+    expect(cline.trustAnswer).toBe("");
+  });
+
+  test("passes output through verbatim (no noise filtering)", () => {
+    const chunk = "Retry attempt 3\nreal output\n";
+    expect(cline.filterOutput(chunk)).toBe(chunk);
+  });
+});

@@ -10,13 +10,21 @@ import {
   concurrentLimitMessage,
 } from "@/lib/agent-limits";
 import {
+  parseClineEffort,
   resolveClaudeLaunchOptions,
   resolveMainPrompt,
   type ClaudeEffort,
   type ClaudeModel,
+  type ClineEffort,
 } from "@/lib/agent-launch";
-import { readClaudeDefaults, readCursorModelSelection } from "@/lib/app-settings";
+import {
+  readClaudeDefaults,
+  readClineDefaults,
+  readClineModelSelection,
+  readCursorModelSelection,
+} from "@/lib/app-settings";
 import { defaultCursorModel, resolveCursorModel } from "@/lib/cursor-models";
+import { defaultClineModel, resolveClineModel } from "@/lib/cline-models";
 import { createChat } from "@/lib/cursor-agent";
 
 export type CreateAgentSessionInput = {
@@ -31,6 +39,11 @@ export type CreateAgentSessionInput = {
   /** Combined cursor model id (effort baked in); resolved against the
    *  configured default when omitted. */
   cursorModel?: string | null;
+  /** Combined clinepass model id; resolved against the configured default when
+   *  omitted. */
+  clineModel?: string | null;
+  /** cline reasoning level (`--thinking`); defaults when omitted. */
+  clineEffort?: ClineEffort | string | null;
   /** Launch the CLI in an isolated git worktree (`--worktree`). */
   worktree?: boolean;
 };
@@ -85,6 +98,21 @@ export async function createAgentSession(
           defaultModel: defaultCursorModel(readCursorModelSelection()),
         })
       : null;
+  const clineModel =
+    opts.agent === "cline"
+      ? resolveClineModel({
+          model: opts.clineModel,
+          defaultModel: defaultClineModel(readClineModelSelection()),
+        })
+      : null;
+  // Explicit per-launch effort wins; otherwise fall back to the board default
+  // (Settings → Cline default effort), not the bare constant.
+  const clineEffort =
+    opts.agent === "cline"
+      ? opts.clineEffort
+        ? parseClineEffort(opts.clineEffort)
+        : readClineDefaults().effort
+      : null;
 
   // cursor: may take a moment (talks to the Cursor backend); surfaces a clear
   // error if cursor-agent isn't logged in / on PATH.
@@ -116,6 +144,8 @@ export async function createAgentSession(
         claudeModel: claudeLaunch?.model ?? null,
         claudeEffort: claudeLaunch?.effort ?? null,
         cursorModel,
+        clineModel,
+        clineEffort,
         worktree: opts.worktree ?? false,
         startedAt: now,
         endedAt: null,

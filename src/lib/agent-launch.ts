@@ -29,6 +29,29 @@ export function parseClaudeEffort(value: string | null | undefined): ClaudeEffor
   return DEFAULT_CLAUDE_EFFORT;
 }
 
+// ---- cline reasoning effort (`--thinking <level>`) ----
+//
+// cline keeps the reasoning level separate from the model (like claude's
+// effort, unlike cursor where it's baked into the model id). The model itself
+// is curated via cline-models.ts; only the effort enum lives here. We always
+// pass the chosen level so a launch never silently inherits a stale provider
+// default ("none" explicitly disables reasoning).
+export const CLINE_EFFORTS = ["none", "low", "medium", "high", "xhigh"] as const;
+
+export type ClineEffort = (typeof CLINE_EFFORTS)[number];
+
+/** Fallback reasoning level when nothing is configured. The board-level default
+ *  is editable in Settings (`app_settings.cline_effort`, see readClineDefaults);
+ *  this constant is only the last resort when that's unset/invalid. */
+export const DEFAULT_CLINE_EFFORT: ClineEffort = "xhigh";
+
+const CLINE_EFFORT_SET = new Set<string>(CLINE_EFFORTS);
+
+export function parseClineEffort(value: string | null | undefined): ClineEffort {
+  if (value && CLINE_EFFORT_SET.has(value)) return value as ClineEffort;
+  return DEFAULT_CLINE_EFFORT;
+}
+
 export function resolveClaudeLaunchOptions(opts: {
   model?: string | null;
   effort?: string | null;

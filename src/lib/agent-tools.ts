@@ -21,19 +21,34 @@ export interface AgentToolSetting {
 
 const AGENT_KIND_SET = new Set<string>(AGENT_KINDS);
 
-/** Default config: every agent kind enabled, in canonical AGENT_KINDS order. */
+/**
+ * Per-kind default enabled state. cline ships OFF by default so existing boards
+ * don't suddenly start offering a third tool (the user opts in from Settings);
+ * cursor and claude stay on. Used both for {@link DEFAULT_AGENT_TOOLS} and when
+ * {@link normalizeAgentTools} back-fills a kind missing from the stored list.
+ */
+export const DEFAULT_AGENT_ENABLED: Record<AgentKind, boolean> = {
+  cursor: true,
+  claude: true,
+  cline: false,
+};
+
+/** Default config: every agent kind in canonical AGENT_KINDS order, each at its
+ *  default enabled state (cline off, the rest on). */
 export const DEFAULT_AGENT_TOOLS: AgentToolSetting[] = AGENT_KINDS.map(
-  (agent) => ({ agent, enabled: true }),
+  (agent) => ({ agent, enabled: DEFAULT_AGENT_ENABLED[agent] }),
 );
 
 /**
  * Parse the stored JSON into a normalized full ordered list:
  * - keeps the stored order and `enabled` flag (incl. disabled tools),
  * - drops unknown agents and de-duplicates (first occurrence wins),
- * - coerces a missing/non-boolean `enabled` to `true`,
- * - appends any AGENT_KINDS missing from the stored list (enabled), so a newly
- *   introduced agent kind shows up by default.
- * Malformed / empty input falls back to every kind enabled.
+ * - coerces a missing/non-boolean `enabled` to `true` (for entries present in
+ *   the stored list),
+ * - appends any AGENT_KINDS missing from the stored list at its
+ *   {@link DEFAULT_AGENT_ENABLED} state, so a newly introduced agent kind shows
+ *   up with the right default (cline off) without a migration.
+ * Malformed / empty input falls back to {@link DEFAULT_AGENT_TOOLS} (cline off).
  */
 export function parseAgentTools(
   raw: string | null | undefined,
@@ -65,7 +80,9 @@ export function normalizeAgentTools(stored: unknown[]): AgentToolSetting[] {
   }
 
   for (const agent of AGENT_KINDS) {
-    if (!seen.has(agent)) result.push({ agent, enabled: true });
+    if (!seen.has(agent)) {
+      result.push({ agent, enabled: DEFAULT_AGENT_ENABLED[agent] });
+    }
   }
   return result;
 }
