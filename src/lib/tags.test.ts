@@ -6,6 +6,7 @@ import {
   normalizeTagColor,
   normalizeTagName,
   resolveTagIds,
+  ticketMatchesTags,
 } from "./tags";
 
 describe("normalizeTagColor", () => {
@@ -119,6 +120,26 @@ describe("groupTagsByTicket", () => {
 
   it("returns an empty record for no rows", () => {
     expect(groupTagsByTicket([])).toEqual({});
+  });
+});
+
+describe("ticketMatchesTags", () => {
+  it("matches every ticket when no tags are active (filter off)", () => {
+    expect(ticketMatchesTags([], [])).toBe(true);
+    expect(ticketMatchesTags(["a", "b"], [])).toBe(true);
+  });
+
+  it("matches when the ticket carries any active tag (OR semantics)", () => {
+    // OR — not AND — because the seeded tags (High/Mid/Low) are mutually
+    // exclusive priorities; AND would make multi-select a dead end (a ticket is
+    // never both High and Mid), so adding tags broadens rather than empties.
+    expect(ticketMatchesTags(["high"], ["high", "mid"])).toBe(true);
+    expect(ticketMatchesTags(["mid"], ["high", "mid"])).toBe(true);
+  });
+
+  it("does not match when the ticket shares none of the active tags", () => {
+    expect(ticketMatchesTags(["low"], ["high", "mid"])).toBe(false);
+    expect(ticketMatchesTags([], ["high"])).toBe(false);
   });
 });
 

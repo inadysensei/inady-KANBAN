@@ -24,6 +24,8 @@ export default function TicketCard({
   sessionCounts,
   tags,
   allTags,
+  activeTagIds,
+  onToggleTag,
   dateFormat,
   now,
 }: {
@@ -32,6 +34,10 @@ export default function TicketCard({
   tags?: TagChip[];
   /** Every configured tag — for the on-card tag editor's picker. */
   allTags: Tag[];
+  /** Tag ids currently in the board filter — drives each chip's active state. */
+  activeTagIds: string[];
+  /** Toggle a tag in the board filter (a chip click). */
+  onToggleTag: (tagId: string) => void;
   dateFormat: DateFormat;
   now: number;
 }) {
@@ -95,13 +101,6 @@ export default function TicketCard({
           >
             {ticket.workingDir}
           </div>
-          {tags && tags.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {tags.map((tag) => (
-                <TagBadge key={tag.id} tag={tag} size="xs" />
-              ))}
-            </div>
-          )}
           {deadlineDays != null && ticket.deadline != null && (
             <div className="mt-1 flex justify-end">
               <time
@@ -145,10 +144,27 @@ export default function TicketCard({
             </div>
           )}
         </Link>
-        {/* Edit this ticket's tags from the board — bottom-right, outside the
-            Link so it opens the popup instead of navigating. Extra top margin
-            so the icon doesn't crowd the status badges right above it. */}
-        <div className="mt-2 flex justify-end">
+        {/* Tags footer — lives *outside* the Link so a chip click filters the
+            board (not navigates), with the edit affordance alongside the chips
+            it edits. Extra top margin so it doesn't crowd the badges above. */}
+        <div className="mt-2 flex items-start justify-between gap-2">
+          <div className="flex flex-wrap gap-1">
+            {(tags ?? []).map((tag) => {
+              const isActive = activeTagIds.includes(tag.id);
+              return (
+                <TagBadge
+                  key={tag.id}
+                  tag={tag}
+                  size="xs"
+                  active={isActive}
+                  onClick={() => onToggleTag(tag.id)}
+                  title={
+                    isActive ? `Remove ${tag.name} filter` : `Filter by ${tag.name}`
+                  }
+                />
+              );
+            })}
+          </div>
           <TicketTagEditor
             ticketId={ticket.id}
             ticketTitle={ticket.title}

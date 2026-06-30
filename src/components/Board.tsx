@@ -12,12 +12,22 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { useMemo, useOptimistic, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useOptimistic,
+  useState,
+  useTransition,
+} from "react";
 import { moveTicket, reorderColumn } from "@/actions/tickets";
 import { killTicketSessions } from "@/lib/agent-session-api";
 import {
+  type BoardFilter,
   computeDragResult,
   groupByStatus,
+  isBoardFilterActive,
+  narrowColumn,
   orderDoneColumn,
   type SessionStatusCounts,
   type Update,
@@ -25,8 +35,9 @@ import {
 import type { DateFormat } from "@/lib/date-format";
 import type { TagChip } from "@/lib/tags";
 import { STATUS_LABELS } from "@/lib/ticket-display";
-import type { Tag, Ticket } from "@/db/schema";
+import type { Tag, Ticket, TicketStatus } from "@/db/schema";
 import { TICKET_STATUSES } from "@/db/schema";
+import BoardToolbar from "./BoardToolbar";
 import Column from "./Column";
 import IceBoxTile from "./IceBoxTile";
 
@@ -53,6 +64,23 @@ const collisionDetection: CollisionDetection = (args) => {
 // still groups over the *full* TICKET_STATUSES so the empty "icebox" bucket
 // exists and a drop onto the tile resolves to a move there.
 const COLUMN_STATUSES = TICKET_STATUSES.filter((s) => s !== "icebox");
+
+/** Debounce the search box so the columns re-narrow a beat after typing settles
+ *  rather than on every keystroke (the input stays controlled by the raw value,
+ *  so it never feels laggy). Clearing to "" applies immediately — widening the
+ *  board back out should feel instant; only narrowing is worth debouncing. */
+function useDebouncedValue(value: string, delayMs: number): string {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    if (value === "") {
+      setDebounced("");
+      return;
+    }
+    const id = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(id);
+  }, [value, delayMs]);
+  return debounced;
+}
 
 export default function Board({
   tickets,
@@ -104,6 +132,51 @@ export default function Board({
     [byStatus],
   );
 
+  // Instant filter pair (search / tag): a pure render-time narrow over the
+  // columns. DnD still runs on the unfiltered `byStatus`, so dragging and the
+  // Done recency sort are untouched and clearing restores the board.
+  const [query, setQuery] = useState("");
+  const [activeTags, setActiveTags] = useState<string[]>([]);
+  const debouncedQuery = useDebouncedValue(query, 150);
+
+  const filter = useMemo<BoardFilter>(
+    () => ({ query: debouncedQuery, activeTagIds: activeTags }),
+    [debouncedQuery, activeTags],
+  );
+  const filteredByStatus = useMemo(() => {
+    const side = { ticketTags };
+    return Object.fromEntries(
+      TICKET_STATUSES.map((s) => [s, narrowColumn(displayByStatus[s], filter, side)]),
+    ) as Record<TicketStatus, Ticket[]>;
+  }, [displayByStatus, filter, ticketTags]);
+
+  // Resolved chips for the active-tag clear bar (kept in tag-position order),
+  // and the total visible across the rendered columns (drives the empty hint).
+  const activeTagChips = useMemo<TagChip[]>(
+    () =>
+      allTags
+        .filter((t) => activeTags.includes(t.id))
+        .map((t) => ({ id: t.id, name: t.name, color: t.color })),
+    [allTags, activeTags],
+  );
+  const matchCount = useMemo(
+    () => COLUMN_STATUSES.reduce((n, s) => n + filteredByStatus[s].length, 0),
+    [filteredByStatus],
+  );
+  const filterActive = isBoardFilterActive(filter);
+
+  const toggleTag = useCallback((tagId: string) => {
+    setActiveTags((prev) =>
+      prev.includes(tagId)
+        ? prev.filter((id) => id !== tagId)
+        : [...prev, tagId],
+    );
+  }, []);
+  const clearAll = useCallback(() => {
+    setQuery("");
+    setActiveTags([]);
+  }, []);
+
   function onDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over) return;
@@ -146,7 +219,15 @@ export default function Board({
   }
 
   return (
-    <div className="flex w-full min-h-0 min-w-0 flex-1 flex-col">
+    <div className="flex w-full min-h-0 min-w-0 flex-1 flex-col gap-3">
+      <BoardToolbar
+        query={query}
+        onQueryChange={setQuery}
+        activeTagChips={activeTagChips}
+        onToggleTag={toggleTag}
+        onClearAll={clearAll}
+        matchCount={matchCount}
+      />
       <DndContext
         // Stable id: dnd-kit otherwise numbers its aria-describedby element with
         // a module-global counter, which drifts between SSR and the client and
@@ -169,11 +250,18 @@ export default function Board({
               key={status}
               status={status}
               title={STATUS_LABELS[status]}
-              tickets={displayByStatus[status]}
+              tickets={filteredByStatus[status]}
               sessionCounts={sessionCounts}
               ticketTags={ticketTags}
               allTags={allTags}
-              totalOverride={status === "done" ? doneTotal : undefined}
+              activeTagIds={activeTags}
+              onToggleTag={toggleTag}
+              // The "N / total" truncation badge (and its "latest N" tooltip)
+              // only makes sense for the unfiltered Done column; under a filter
+              // the visible count is a match count, not "the latest N".
+              totalOverride={
+                status === "done" && !filterActive ? doneTotal : undefined
+              }
               dateFormat={dateFormat}
               now={now}
             />

@@ -1,3 +1,4 @@
+import { ticketMatchesTags, type TagChip } from "./tags";
 import type {
   SessionActivity,
   SessionStatus,
@@ -178,4 +179,61 @@ export function computeDragResult(
     kind: "move",
     update: { id: activeId, status: toStatus, position: newPosition },
   };
+}
+
+/**
+ * The board's instant-filter state: a title/dir search string and the set of tag
+ * ids clicked on cards (OR-matched — see ticketMatchesTags). The two combine
+ * with AND. This is a pure render-time narrow over the columns — it never
+ * touches DnD ordering or the Done recency sort, so clearing it restores the
+ * original board exactly. Held in Board state, applied via narrowColumn just
+ * before each column renders.
+ */
+export interface BoardFilter {
+  query: string;
+  activeTagIds: readonly string[];
+}
+
+/** Case-insensitive substring of the title or working dir. Empty query (after
+ *  trim) matches everything, so an unset search box hides nothing. */
+export function ticketMatchesQuery(
+  ticket: Pick<Ticket, "title" | "workingDir">,
+  query: string,
+): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return (
+    ticket.title.toLowerCase().includes(q) ||
+    ticket.workingDir.toLowerCase().includes(q)
+  );
+}
+
+/** Whether either filter is set — drives the "Clear all" affordance and lets
+ *  narrowColumn short-circuit to the identity (original board). */
+export function isBoardFilterActive(filter: BoardFilter): boolean {
+  return filter.query.trim() !== "" || filter.activeTagIds.length > 0;
+}
+
+/**
+ * Narrow one rendered column by the AND of both filters. When no filter is
+ * active it returns the *same array reference* (the board is shown untouched —
+ * DnD order and Done recency intact). Side data (per-ticket tags) is passed in
+ * so this stays pure and node-testable.
+ */
+export function narrowColumn(
+  tickets: Ticket[],
+  filter: BoardFilter,
+  side: {
+    ticketTags: Record<string, TagChip[]>;
+  },
+): Ticket[] {
+  if (!isBoardFilterActive(filter)) return tickets;
+  return tickets.filter(
+    (t) =>
+      ticketMatchesQuery(t, filter.query) &&
+      ticketMatchesTags(
+        (side.ticketTags[t.id] ?? []).map((c) => c.id),
+        filter.activeTagIds,
+      ),
+  );
 }
