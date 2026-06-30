@@ -405,7 +405,7 @@ function RepositoryEditor({
   return (
     <div className={cardClass("flex flex-col gap-2 p-4")}>
       <h3 className="text-sm font-semibold">
-        {repository ? "Edit repository" : "Add repository"}
+        {repository ? "Edit working directory" : "Add working directory"}
       </h3>
       <p className="text-xs text-muted">
         Type an absolute path, or browse for a folder (macOS).
@@ -414,8 +414,8 @@ function RepositoryEditor({
         <input
           value={path}
           onChange={(e) => setPath(e.target.value)}
-          placeholder="/absolute/path/to/repo"
-          aria-label="Repository path"
+          placeholder="/absolute/path/to/project"
+          aria-label="Working directory path"
           className={inputClass("flex-1 font-mono text-sm")}
         />
         <button
@@ -1329,16 +1329,16 @@ export default function SettingsView({
         )}
       </section>
 
-      <section id="repositories" className="flex flex-col gap-3">
+      <section id="working-directories" className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Repositories</h2>
+          <h2 className="text-sm font-semibold">Working directories</h2>
           {!editingRepoId && (
             <button
               type="button"
               onClick={() => setEditingRepoId("new")}
               className={buttonClass({ variant: "secondary", size: "sm" })}
             >
-              Add repository
+              Add working directory
             </button>
           )}
         </div>
@@ -1388,7 +1388,7 @@ export default function SettingsView({
             ))}
             {repositories.length === 0 && (
               <p className="text-sm text-muted">
-                No repositories yet. Add one to create tickets.
+                No working directories yet. Add one to create tickets.
               </p>
             )}
           </ul>
