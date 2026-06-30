@@ -69,13 +69,13 @@ export const agentSessions = sqliteTable(
       .notNull()
       .references(() => tickets.id, { onDelete: "cascade" }),
     // Which CLI drives this session.
-    agent: text("agent", { enum: ["cursor", "claude"] })
+    agent: text("agent", { enum: ["cursor", "claude", "cline"] })
       .notNull()
       .default("cursor"),
     // Conversation UUID — pre-issued via `cursor-agent create-chat` (cursor) or
-    // generated locally and pinned with --session-id (claude). The physical
-    // column name predates claude support; kept to avoid a destructive rename
-    // (db:push has no migration files).
+    // generated locally and pinned with --session-id (claude) / --id (cline).
+    // The physical column name predates claude/cline support; kept to avoid a
+    // destructive rename (db:push has no migration files).
     agentSessionId: text("cursor_session_id").notNull().unique(),
     mainPrompt: text("main_prompt").notNull(),
     startedAt: integer("started_at").notNull(),
@@ -101,6 +101,12 @@ export const agentSessions = sqliteTable(
     // no separate --effort. Passed via --model on every cursor launch (it's
     // per-invocation, not pinned to the chat). Nullable so db:push adds cleanly.
     cursorModel: text("cursor_model"),
+    // Cline-only launch flags (null for cursor/claude sessions). The combined
+    // clinepass model id (e.g. "cline-pass/glm-5.2") and the --thinking effort
+    // (none/low/medium/high/xhigh). Re-passed on every cline launch (cline takes
+    // them per-invocation via -m/--thinking). Nullable so db:push adds cleanly.
+    clineModel: text("cline_model"),
+    clineEffort: text("cline_effort"),
     // Launch the CLI in an isolated git worktree (`--worktree`, supported by
     // both cursor and claude). Per-session opt-in, default off; never inherited
     // (re-run starts fresh). The flag is passed only on the initial launch —
@@ -123,12 +129,14 @@ export const taskTemplates = sqliteTable(
     title: text("title").notNull(),
     description: text("description").notNull().default(""),
     workingDir: text("working_dir").notNull(),
-    agent: text("agent", { enum: ["cursor", "claude"] })
+    agent: text("agent", { enum: ["cursor", "claude", "cline"] })
       .notNull()
       .default("claude"),
     claudeModel: text("model"),
     claudeEffort: text("effort"),
     cursorModel: text("cursor_model"),
+    clineModel: text("cline_model"),
+    clineEffort: text("cline_effort"),
     mainPrompt: text("prompt").notNull().default(""),
     useAgentTeam: integer("team_enabled", { mode: "boolean" })
       .notNull()
@@ -155,6 +163,11 @@ export const appSettings = sqliteTable("app_settings", {
   id: text("id").primaryKey(),
   claudeModel: text("claude_model").notNull().default("opus"),
   claudeEffort: text("claude_effort").notNull().default("xhigh"),
+  // Board-level default cline reasoning level (`--thinking`), editable in
+  // Settings. New cline sessions/templates seed from it (still per-launch
+  // overridable). Parsed through parseClineEffort on read. The cline MODEL
+  // default lives in the cline_models selection (like cursor), not here.
+  clineEffort: text("cline_effort").notNull().default("xhigh"),
   // How dates render across the board/UI. Default YYYY/MM/DD; the user picks a
   // locale-appropriate format in Settings. Parsed through parseDateFormat
   // (date-format.ts) on read, so an unknown value falls back to the default.
@@ -169,6 +182,11 @@ export const appSettings = sqliteTable("app_settings", {
   // Default "[]" → parseCursorModelSelection returns Composer 2.5 + Auto, so an
   // unset board shows exactly those two with no seeding.
   cursorModels: text("cursor_models").notNull().default("[]"),
+  // Which clinepass models the launch form offers, in display order, and which
+  // is default. JSON array of { id, default } (same JSON-in-text precedent as
+  // cursorModels). Default "[]" → parseClineModelSelection returns a single
+  // default (cline-pass/glm-5.2) with no seeding.
+  clineModels: text("cline_models").notNull().default("[]"),
   // One-shot flag: 1 once `bootstrapDefaults` has imported the legacy
   // working-dirs file and seeded the default editors. Guards against re-seeding
   // after the user intentionally clears those lists.
@@ -292,4 +310,4 @@ export const TICKET_STATUSES: TicketStatus[] = [
   "icebox",
 ];
 
-export const AGENT_KINDS: AgentKind[] = ["cursor", "claude"];
+export const AGENT_KINDS: AgentKind[] = ["cursor", "claude", "cline"];

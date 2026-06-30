@@ -8,6 +8,8 @@ import {
   deleteTeamTemplate,
   saveAgentTools,
   saveClaudeDefaults,
+  saveClineDefaults,
+  saveClineModels,
   saveCursorModels,
   saveDateFormat,
   saveTaskTemplate,
@@ -33,8 +35,8 @@ import type {
   TaskTemplate,
   TeamTemplate,
 } from "@/db/schema";
-import type { ClaudeEffort, ClaudeModel } from "@/lib/agent-launch";
-import { CLAUDE_EFFORTS, CLAUDE_MODELS } from "@/lib/agent-launch";
+import type { ClaudeEffort, ClaudeModel, ClineEffort } from "@/lib/agent-launch";
+import { CLAUDE_EFFORTS, CLAUDE_MODELS, CLINE_EFFORTS } from "@/lib/agent-launch";
 import type { AgentToolSetting } from "@/lib/agent-tools";
 import {
   enabledAgents,
@@ -56,6 +58,21 @@ import {
   removeCursorModel,
   setDefaultCursorModel,
 } from "@/lib/cursor-models";
+import type {
+  ClineModelChoices,
+  ClineModelSelectionEntry,
+} from "@/lib/cline-models";
+import {
+  addClineModel,
+  availableClineModelsToAdd,
+  clineModelLabel,
+  clineModelOptions,
+  defaultClineModel,
+  isKnownClineModel,
+  moveClineModel,
+  removeClineModel,
+  setDefaultClineModel,
+} from "@/lib/cline-models";
 import { isValidTagColor, normalizeTagColor } from "@/lib/tags";
 import TagBadge from "@/components/TagBadge";
 import { AGENT_LABELS, AGENT_LOGOS } from "@/lib/agent-display";
@@ -94,6 +111,8 @@ function TaskTemplateEditor({
   workingDirs,
   claudeDefaults,
   cursorModelChoices,
+  clineModelChoices,
+  clineDefaults,
   teamTemplates,
   agents,
   onSaved,
@@ -103,6 +122,8 @@ function TaskTemplateEditor({
   workingDirs: string[];
   claudeDefaults: { model: ClaudeModel; effort: ClaudeEffort };
   cursorModelChoices: CursorModelChoices;
+  clineModelChoices: ClineModelChoices;
+  clineDefaults: { effort: ClineEffort };
   teamTemplates: TeamTemplate[];
   agents: AgentKind[];
   onSaved: () => void;
@@ -128,6 +149,10 @@ function TaskTemplateEditor({
     claudeEffort:
       (template?.claudeEffort as ClaudeEffort | null) ?? claudeDefaults.effort,
     cursorModel: template?.cursorModel ?? cursorModelChoices.default,
+    clineModel: template?.clineModel ?? clineModelChoices.default,
+    clineEffort:
+      (template?.clineEffort as AgentLaunchValues["clineEffort"] | null) ??
+      clineDefaults.effort,
     useAgentTeam: template?.useAgentTeam ?? false,
     agentTeamMembers: template
       ? parseMembers(template.agentTeamMembers)
@@ -157,6 +182,8 @@ function TaskTemplateEditor({
           claudeModel: launch.agent === "claude" ? launch.claudeModel : null,
           claudeEffort: launch.agent === "claude" ? launch.claudeEffort : null,
           cursorModel: launch.agent === "cursor" ? launch.cursorModel : null,
+          clineModel: launch.agent === "cline" ? launch.clineModel : null,
+          clineEffort: launch.agent === "cline" ? launch.clineEffort : null,
         });
         onSaved();
       } catch (err) {
@@ -215,6 +242,8 @@ function TaskTemplateEditor({
         onChange={setLaunch}
         claudeDefaults={claudeDefaults}
         cursorModelChoices={cursorModelChoices}
+        clineModelChoices={clineModelChoices}
+        clineDefaults={clineDefaults}
         teamTemplates={teamTemplates}
         agents={agents}
         settingsHref="/settings#team-templates"
@@ -606,6 +635,8 @@ const DATE_PREVIEW_TS = new Date(2026, 0, 31).getTime();
 export default function SettingsView({
   claudeDefaults,
   cursorModelSelection,
+  clineModelSelection,
+  clineDefaults,
   dateFormat,
   agentTools,
   taskTemplates,
@@ -617,6 +648,8 @@ export default function SettingsView({
 }: {
   claudeDefaults: { model: ClaudeModel; effort: ClaudeEffort };
   cursorModelSelection: CursorModelSelectionEntry[];
+  clineModelSelection: ClineModelSelectionEntry[];
+  clineDefaults: { effort: ClineEffort };
   dateFormat: DateFormat;
   agentTools: AgentToolSetting[];
   taskTemplates: TaskTemplate[];
@@ -636,6 +669,10 @@ export default function SettingsView({
   const [toolsPending, saveToolsTransition] = useTransition();
   const noToolEnabled = !tools.some((t) => t.enabled);
   const enabledTemplateAgents = enabledAgents(agentTools);
+  // Live (unsaved) enabled set: gates each tool's settings sections below, so
+  // ticking/unticking a tool in "AI tools" shows/hides its settings immediately
+  // (vs. enabledTemplateAgents, which uses the SAVED list for the template form).
+  const enabledNow = new Set(enabledAgents(tools));
 
   function saveTools() {
     setToolsError(null);
@@ -670,6 +707,52 @@ export default function SettingsView({
         router.refresh();
       } catch (err) {
         setCursorModelsError((err as Error).message);
+      }
+    });
+  }
+
+  // Cline models: same curated/ordered-selection shape as cursor (the clinepass
+  // catalog lives client-side in cline-models.ts).
+  const [clineModels, setClineModels] = useState(clineModelSelection);
+  const [clineModelsError, setClineModelsError] = useState<string | null>(null);
+  const [clineModelsPending, saveClineModelsTransition] = useTransition();
+  const clineModelsToAdd = availableClineModelsToAdd(clineModels);
+  const savedClineChoices: ClineModelChoices = {
+    options: clineModelOptions(clineModelSelection),
+    default: defaultClineModel(clineModelSelection),
+  };
+
+  function saveClineModelSelection() {
+    setClineModelsError(null);
+    saveClineModelsTransition(async () => {
+      try {
+        await saveClineModels(clineModels);
+        router.refresh();
+      } catch (err) {
+        setClineModelsError((err as Error).message);
+      }
+    });
+  }
+
+  // Cline default effort: the board-level `--thinking` level new sessions seed
+  // from (mirrors the Claude defaults; cline's model default rides the selection
+  // above, so this is effort-only).
+  const [clineEffortDefault, setClineEffortDefault] = useState(
+    clineDefaults.effort,
+  );
+  const [clineDefaultsError, setClineDefaultsError] = useState<string | null>(
+    null,
+  );
+  const [clineDefaultsPending, saveClineDefaultsTransition] = useTransition();
+
+  function saveClineDefaultEffort() {
+    setClineDefaultsError(null);
+    saveClineDefaultsTransition(async () => {
+      try {
+        await saveClineDefaults({ effort: clineEffortDefault });
+        router.refresh();
+      } catch (err) {
+        setClineDefaultsError((err as Error).message);
       }
     });
   }
@@ -822,6 +905,7 @@ export default function SettingsView({
         </div>
       </section>
 
+      {enabledNow.has("claude") && (
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold">Claude defaults</h2>
         <div className={cardClass("p-4")}>
@@ -868,7 +952,9 @@ export default function SettingsView({
           </button>
         </div>
       </section>
+      )}
 
+      {enabledNow.has("cursor") && (
       <section id="cursor-models" className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold">Cursor models</h2>
         <div className={cardClass("flex flex-col gap-3 p-4")}>
@@ -984,6 +1070,165 @@ export default function SettingsView({
           </button>
         </div>
       </section>
+      )}
+
+      {enabledNow.has("cline") && (
+      <section id="cline-models" className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold">Cline models</h2>
+        <div className={cardClass("flex flex-col gap-3 p-4")}>
+          <p className="text-xs text-muted">
+            Which clinepass models the New agent form and task templates offer,
+            the order they appear in, and the default pick. The reasoning effort
+            is a separate per-launch choice (Cline’s <code>--thinking</code>).
+          </p>
+          <ul className="flex max-w-md flex-col gap-2">
+            {clineModels.map((entry, index) => (
+              <li
+                key={entry.id}
+                className="flex items-center justify-between gap-2 rounded-md border border-line bg-card px-3 py-2"
+              >
+                <label className="flex flex-1 cursor-pointer items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="cline-default-model"
+                    checked={entry.default}
+                    onChange={() =>
+                      setClineModels((prev) =>
+                        setDefaultClineModel(prev, entry.id),
+                      )
+                    }
+                    className="accent-accent"
+                    aria-label={`Set ${clineModelLabel(entry.id)} as default`}
+                  />
+                  <span className="truncate font-medium">
+                    {clineModelLabel(entry.id)}
+                  </span>
+                  {entry.default && (
+                    <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted">
+                      default
+                    </span>
+                  )}
+                  {!isKnownClineModel(entry.id) && (
+                    <span
+                      className="shrink-0 text-[10px] uppercase tracking-wide text-warn"
+                      title="This model is no longer offered by clinepass — remove it or pick another."
+                    >
+                      unavailable
+                    </span>
+                  )}
+                </label>
+                <div className="flex shrink-0 items-center gap-1">
+                  <IconButton
+                    size="sm"
+                    aria-label={`Move ${clineModelLabel(entry.id)} up`}
+                    disabled={index === 0}
+                    onClick={() =>
+                      setClineModels((prev) => moveClineModel(prev, index, -1))
+                    }
+                  >
+                    <MoveUpIcon size={ICON_SIZE_SM} />
+                  </IconButton>
+                  <IconButton
+                    size="sm"
+                    aria-label={`Move ${clineModelLabel(entry.id)} down`}
+                    disabled={index === clineModels.length - 1}
+                    onClick={() =>
+                      setClineModels((prev) => moveClineModel(prev, index, 1))
+                    }
+                  >
+                    <MoveDownIcon size={ICON_SIZE_SM} />
+                  </IconButton>
+                  <IconButton
+                    size="sm"
+                    aria-label={`Remove ${clineModelLabel(entry.id)}`}
+                    disabled={clineModels.length <= 1}
+                    onClick={() =>
+                      setClineModels((prev) => removeClineModel(prev, entry.id))
+                    }
+                  >
+                    <TrashIcon size={ICON_SIZE_SM} />
+                  </IconButton>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {/* The long catalog lives inside this dropdown, keeping the page short. */}
+          <select
+            value=""
+            disabled={clineModelsToAdd.length === 0}
+            onChange={(e) => {
+              const id = e.target.value;
+              if (id) setClineModels((prev) => addClineModel(prev, id));
+              e.target.value = "";
+            }}
+            className={inputClass("max-w-md")}
+            aria-label="Add a cline model"
+          >
+            <option value="">
+              {clineModelsToAdd.length === 0
+                ? "All models added"
+                : "+ Add a model…"}
+            </option>
+            {clineModelsToAdd.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {clineModelsError && (
+            <p className="text-xs text-danger">{clineModelsError}</p>
+          )}
+          <button
+            type="button"
+            disabled={clineModelsPending}
+            onClick={saveClineModelSelection}
+            className={buttonClass({ extra: "self-start" })}
+          >
+            {clineModelsPending ? "Saving…" : "Save cline models"}
+          </button>
+        </div>
+      </section>
+      )}
+
+      {enabledNow.has("cline") && (
+      <section id="cline-defaults" className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold">Cline default effort</h2>
+        <div className={cardClass("flex flex-col gap-3 p-4")}>
+          <p className="text-xs text-muted">
+            The reasoning level (Cline’s <code>--thinking</code>) new Cline
+            sessions and task templates start with. You can still change it per
+            launch.
+          </p>
+          <label className="flex max-w-xs flex-col gap-1 text-xs">
+            <span className="font-semibold text-muted">Default effort</span>
+            <select
+              value={clineEffortDefault}
+              onChange={(e) =>
+                setClineEffortDefault(e.target.value as ClineEffort)
+              }
+              className={inputClass()}
+            >
+              {CLINE_EFFORTS.map((eff) => (
+                <option key={eff} value={eff}>
+                  {eff}
+                </option>
+              ))}
+            </select>
+          </label>
+          {clineDefaultsError && (
+            <p className="text-xs text-danger">{clineDefaultsError}</p>
+          )}
+          <button
+            type="button"
+            disabled={clineDefaultsPending}
+            onClick={saveClineDefaultEffort}
+            className={buttonClass({ extra: "self-start" })}
+          >
+            {clineDefaultsPending ? "Saving…" : "Save cline default effort"}
+          </button>
+        </div>
+      </section>
+      )}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold">Date format</h2>
@@ -1256,6 +1501,8 @@ export default function SettingsView({
             workingDirs={workingDirs}
             claudeDefaults={claudeDefaults}
             cursorModelChoices={savedCursorChoices}
+            clineModelChoices={savedClineChoices}
+            clineDefaults={clineDefaults}
             teamTemplates={teamTemplates}
             agents={enabledTemplateAgents}
             onSaved={() => {

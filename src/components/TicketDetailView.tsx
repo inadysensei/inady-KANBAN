@@ -25,8 +25,9 @@ import type {
   TicketMemo,
 } from "@/db/schema";
 import { AGENT_KINDS } from "@/db/schema";
-import type { ClaudeEffort, ClaudeModel } from "@/lib/agent-launch";
+import type { ClaudeEffort, ClaudeModel, ClineEffort } from "@/lib/agent-launch";
 import type { CursorModelChoices } from "@/lib/cursor-models";
+import type { ClineModelChoices } from "@/lib/cline-models";
 import { killAgentSession, killTicketSessions } from "@/lib/agent-session-api";
 import {
   type DateFormat,
@@ -69,6 +70,8 @@ export default function TicketDetailView({
   editors,
   claudeDefaults,
   cursorModelChoices,
+  clineModelChoices,
+  clineDefaults,
   teamTemplates,
   agents = AGENT_KINDS,
   initialSessionId,
@@ -84,6 +87,8 @@ export default function TicketDetailView({
   editors: Editor[];
   claudeDefaults: { model: ClaudeModel; effort: ClaudeEffort };
   cursorModelChoices: CursorModelChoices;
+  clineModelChoices: ClineModelChoices;
+  clineDefaults: { effort: ClineEffort };
   teamTemplates: TeamTemplate[];
   /** Enabled tools (Settings), in display order. */
   agents?: AgentKind[];
@@ -335,6 +340,8 @@ export default function TicketDetailView({
           claudeModel: session.claudeModel,
           claudeEffort: session.claudeEffort,
           cursorModel: session.cursorModel,
+          clineModel: session.clineModel,
+          clineEffort: session.clineEffort,
         });
         openFreshSession(sessionDbId);
       } catch (err) {
@@ -515,6 +522,8 @@ export default function TicketDetailView({
           ticketId={ticket.id}
           claudeDefaults={claudeDefaults}
           cursorModelChoices={cursorModelChoices}
+          clineModelChoices={clineModelChoices}
+          clineDefaults={clineDefaults}
           teamTemplates={teamTemplates}
           agents={agents}
           onStarted={openFreshSession}

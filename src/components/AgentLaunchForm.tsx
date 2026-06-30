@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import type { ClaudeEffort, ClaudeModel } from "@/lib/agent-launch";
+import type { ClaudeEffort, ClaudeModel, ClineEffort } from "@/lib/agent-launch";
 import {
   CLAUDE_EFFORTS,
   CLAUDE_MODELS,
+  CLINE_EFFORTS,
   padAgentTeamMembers,
   parseAgentTeamMembers,
 } from "@/lib/agent-launch";
 import type { CursorModelChoices } from "@/lib/cursor-models";
 import { cursorModelLabel, isKnownCursorModel } from "@/lib/cursor-models";
+import type { ClineModelChoices } from "@/lib/cline-models";
+import { clineModelLabel, isKnownClineModel } from "@/lib/cline-models";
 import { AGENT_KINDS, type AgentKind } from "@/db/schema";
 import { AGENT_LABELS, AGENT_LOGOS } from "@/lib/agent-display";
 import type { TeamTemplate } from "@/db/schema";
@@ -24,6 +27,10 @@ export type AgentLaunchValues = {
   claudeEffort: ClaudeEffort;
   /** Combined cursor model id (effort baked in). Only used when agent==="cursor". */
   cursorModel: string;
+  /** Combined clinepass model id. Only used when agent==="cline". */
+  clineModel: string;
+  /** cline reasoning level (`--thinking`). Only used when agent==="cline". */
+  clineEffort: ClineEffort;
   useAgentTeam: boolean;
   agentTeamMembers: string[];
   /** Launch the CLI in an isolated git worktree (`--worktree`, both CLIs). */
@@ -40,6 +47,8 @@ export default function AgentLaunchForm({
   onChange,
   claudeDefaults,
   cursorModelChoices,
+  clineModelChoices,
+  clineDefaults,
   teamTemplates,
   agents = AGENT_KINDS,
   settingsHref = "/settings",
@@ -52,6 +61,9 @@ export default function AgentLaunchForm({
   onChange: (next: AgentLaunchValues) => void;
   claudeDefaults: { model: ClaudeModel; effort: ClaudeEffort };
   cursorModelChoices: CursorModelChoices;
+  clineModelChoices: ClineModelChoices;
+  /** Board-level cline defaults (effort); model default rides clineModelChoices. */
+  clineDefaults: { effort: ClineEffort };
   teamTemplates: TeamTemplate[];
   /** Tools to offer, in display order — the enabled ones from Settings.
    *  Defaults to every kind so callers that don't thread the setting still work. */
@@ -111,6 +123,10 @@ export default function AgentLaunchForm({
                       values.claudeEffort || claudeDefaults.effort,
                     cursorModel:
                       values.cursorModel || cursorModelChoices.default,
+                    clineModel:
+                      values.clineModel || clineModelChoices.default,
+                    clineEffort:
+                      values.clineEffort || clineDefaults.effort,
                   })
                 }
                 className="accent-accent"
@@ -189,6 +205,55 @@ export default function AgentLaunchForm({
             ))}
           </select>
         </label>
+      )}
+
+      {values.agent === "cline" && (
+        <div className="grid grid-cols-2 gap-2">
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="font-semibold text-muted">Model</span>
+            <select
+              value={values.clineModel}
+              onChange={(e) => patch({ clineModel: e.target.value })}
+              className={inputClass()}
+            >
+              {/* Keep the current value selectable even if it's no longer in the
+                  enabled set (e.g. a template pinned a since-removed model). */}
+              {!clineModelChoices.options.some(
+                (o) => o.id === values.clineModel,
+              ) &&
+                values.clineModel && (
+                  <option value={values.clineModel}>
+                    {clineModelLabel(values.clineModel)}
+                    {isKnownClineModel(values.clineModel)
+                      ? ""
+                      : " (unavailable)"}
+                  </option>
+                )}
+              {clineModelChoices.options.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                  {isKnownClineModel(option.id) ? "" : " (unavailable)"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="font-semibold text-muted">Effort</span>
+            <select
+              value={values.clineEffort}
+              onChange={(e) =>
+                patch({ clineEffort: e.target.value as ClineEffort })
+              }
+              className={inputClass()}
+            >
+              {CLINE_EFFORTS.map((effort) => (
+                <option key={effort} value={effort}>
+                  {effort}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       )}
 
       {showWorktree && (
@@ -299,6 +364,8 @@ export function AgentLaunchFormReadonlySummary({
     | "claudeModel"
     | "claudeEffort"
     | "cursorModel"
+    | "clineModel"
+    | "clineEffort"
     | "useAgentTeam"
     | "agentTeamMembers"
   >;
@@ -313,6 +380,11 @@ export function AgentLaunchFormReadonlySummary({
       )}
       {values.agent === "cursor" && values.cursorModel && (
         <li>Cursor: {cursorModelLabel(values.cursorModel)}</li>
+      )}
+      {values.agent === "cline" && values.clineModel && (
+        <li>
+          Cline: {clineModelLabel(values.clineModel)} / {values.clineEffort}
+        </li>
       )}
       {values.useAgentTeam && (
         <li>

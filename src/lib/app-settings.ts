@@ -4,10 +4,13 @@ import { appSettings } from "../db/schema";
 import {
   DEFAULT_CLAUDE_EFFORT,
   DEFAULT_CLAUDE_MODEL,
+  DEFAULT_CLINE_EFFORT,
   type ClaudeEffort,
   type ClaudeModel,
+  type ClineEffort,
   parseClaudeEffort,
   parseClaudeModel,
+  parseClineEffort,
 } from "./agent-launch";
 import { DEFAULT_DATE_FORMAT, type DateFormat, parseDateFormat } from "./date-format";
 import {
@@ -23,6 +26,14 @@ import {
   parseCursorModelSelection,
   serializeCursorModelSelection,
 } from "./cursor-models";
+import {
+  type ClineModelChoices,
+  type ClineModelSelectionEntry,
+  clineModelOptions,
+  defaultClineModel,
+  parseClineModelSelection,
+  serializeClineModelSelection,
+} from "./cline-models";
 
 /** The single `app_settings` row both the Claude defaults and the boot-time
  *  seeding flag live on. */
@@ -81,6 +92,23 @@ export function writeClaudeDefaults(defaults: ClaudeDefaults): void {
   });
 }
 
+export type ClineDefaults = {
+  /** Board-level default `--thinking` level. The model default lives in the
+   *  cline-models selection (readClineModelChoices), not here. */
+  effort: ClineEffort;
+};
+
+export function readClineDefaults(): ClineDefaults {
+  const row = readSettingsRow();
+  return {
+    effort: row ? parseClineEffort(row.clineEffort) : DEFAULT_CLINE_EFFORT,
+  };
+}
+
+export function writeClineDefaults(defaults: ClineDefaults): void {
+  upsertAppSettings({ clineEffort: defaults.effort });
+}
+
 /** The user-chosen date display format (Settings), default YYYY/MM/DD. */
 export function readDateFormat(): DateFormat {
   const row = readSettingsRow();
@@ -120,6 +148,28 @@ export function readCursorModelChoices(): CursorModelChoices {
   return {
     options: cursorModelOptions(selection),
     default: defaultCursorModel(selection),
+  };
+}
+
+/** The configured clinepass models (which to show, order, default), normalized —
+ *  defaults to GLM-5.2 when unset. */
+export function readClineModelSelection(): ClineModelSelectionEntry[] {
+  return parseClineModelSelection(readSettingsRow()?.clineModels);
+}
+
+export function writeClineModelSelection(
+  selection: ClineModelSelectionEntry[],
+): void {
+  upsertAppSettings({ clineModels: serializeClineModelSelection(selection) });
+}
+
+/** Launch-form view of the cline selection: enabled options (in order) + the
+ *  default pick. Mirrors {@link readCursorModelChoices}. */
+export function readClineModelChoices(): ClineModelChoices {
+  const selection = readClineModelSelection();
+  return {
+    options: clineModelOptions(selection),
+    default: defaultClineModel(selection),
   };
 }
 

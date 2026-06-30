@@ -12,15 +12,19 @@ import {
 } from "./agent-tools";
 
 describe("DEFAULT_AGENT_TOOLS", () => {
-  test("lists every agent kind, all enabled, in AGENT_KINDS order", () => {
-    expect(DEFAULT_AGENT_TOOLS).toEqual(
-      AGENT_KINDS.map((agent) => ({ agent, enabled: true })),
-    );
+  test("lists every agent kind in AGENT_KINDS order, cline off and the rest on", () => {
+    expect(DEFAULT_AGENT_TOOLS).toEqual([
+      { agent: "cursor", enabled: true },
+      { agent: "claude", enabled: true },
+      { agent: "cline", enabled: false },
+    ]);
+    // Sanity-check the order still matches the canonical kind list.
+    expect(DEFAULT_AGENT_TOOLS.map((t) => t.agent)).toEqual(AGENT_KINDS);
   });
 });
 
 describe("parseAgentTools", () => {
-  test("returns the default (both enabled) for empty / null / blank", () => {
+  test("returns the default (cursor+claude on, cline off) for empty / null / blank", () => {
     expect(parseAgentTools("[]")).toEqual(DEFAULT_AGENT_TOOLS);
     expect(parseAgentTools(null)).toEqual(DEFAULT_AGENT_TOOLS);
     expect(parseAgentTools(undefined)).toEqual(DEFAULT_AGENT_TOOLS);
@@ -40,6 +44,8 @@ describe("parseAgentTools", () => {
     expect(parseAgentTools(raw)).toEqual([
       { agent: "claude", enabled: false },
       { agent: "cursor", enabled: true },
+      // cline is absent from the stored list → back-filled at its default (off).
+      { agent: "cline", enabled: false },
     ]);
   });
 
@@ -56,13 +62,18 @@ describe("parseAgentTools", () => {
     expect(parsed.some((t) => (t.agent as string) === "bogus")).toBe(false);
   });
 
-  test("appends any agent kind missing from the stored list, enabled", () => {
+  test("back-fills missing kinds at their default — cursor/claude on, cline off", () => {
     const raw = JSON.stringify([{ agent: "claude", enabled: false }]);
     const parsed = parseAgentTools(raw);
-    expect(parsed.map((t) => t.agent)).toEqual(["claude", "cursor"]);
+    expect(parsed.map((t) => t.agent)).toEqual(["claude", "cursor", "cline"]);
     expect(parsed.find((t) => t.agent === "cursor")).toEqual({
       agent: "cursor",
       enabled: true,
+    });
+    // The whole point of the cline default: back-fill DISABLED, not enabled.
+    expect(parsed.find((t) => t.agent === "cline")).toEqual({
+      agent: "cline",
+      enabled: false,
     });
   });
 
@@ -86,19 +97,22 @@ describe("normalizeAgentTools", () => {
     expect(normalized).toEqual([
       { agent: "claude", enabled: false },
       { agent: "cursor", enabled: true },
+      { agent: "cline", enabled: false },
     ]);
   });
 
-  test("returns every kind enabled for a non-array / empty input", () => {
+  test("returns the defaults (cline off) for a non-array / empty input", () => {
     expect(normalizeAgentTools([])).toEqual(DEFAULT_AGENT_TOOLS);
   });
 });
 
 describe("serializeAgentTools", () => {
   test("round-trips through parseAgentTools", () => {
+    // All three kinds present (cline explicitly on) → no back-fill, exact round-trip.
     const tools = [
       { agent: "claude" as const, enabled: false },
       { agent: "cursor" as const, enabled: true },
+      { agent: "cline" as const, enabled: true },
     ];
     expect(parseAgentTools(serializeAgentTools(tools))).toEqual(tools);
   });

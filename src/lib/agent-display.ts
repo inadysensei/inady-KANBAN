@@ -10,12 +10,14 @@ import type { SessionStatusCounts } from "./board-order";
 export const AGENT_LABELS: Record<AgentKind, string> = {
   cursor: "Cursor",
   claude: "Claude",
+  cline: "Cline",
 };
 
 /** Official logo marks served from public/logos/. */
 export const AGENT_LOGOS: Record<AgentKind, string> = {
   cursor: "/logos/cursor.svg",
   claude: "/logos/claude.svg",
+  cline: "/logos/cline.svg",
 };
 
 /**
