@@ -1,12 +1,10 @@
 import type { AgentKind } from "../db/schema";
 import type { ClaudeEffort, ClaudeModel, ClineEffort } from "./agent-launch";
 import { CURSOR_AGENT_BIN, filterStderr } from "./cursor-agent";
+import { CLINE_BIN } from "./cline-agent";
 
 /** Allow overriding the claude binary path; defaults to whatever is on PATH. */
 export const CLAUDE_BIN = process.env.CLAUDE_BIN || "claude";
-
-/** Allow overriding the cline binary path; defaults to whatever is on PATH. */
-export const CLINE_BIN = process.env.CLINE_BIN || "cline";
 
 /** Provider id clinepass models are served under (cline's `-P` flag). */
 export const CLINE_PROVIDER = "cline-pass";
@@ -110,17 +108,17 @@ export const AGENT_CLIS: Record<AgentKind, AgentCli> = {
     // claude's autonomous posture. Model/provider/effort are per-invocation
     // (cline takes them via -m/-P/--thinking, not pinned to the session), so —
     // like cursor's --model — they're re-passed on EVERY launch incl. resume;
-    // omitting them on resume would revert to cline's defaults. We pin a
-    // locally-issued UUID with `--id` so the conversation id exists before the
-    // PTY runs. ASSUMES `--id` is create-or-resume — the SAME flag both creates
-    // a new chat and re-attaches to it, unlike claude's split
-    // `--session-id`/`--resume`. VERIFY on first run: if cline instead rejects
-    // an unknown id (or starts a duplicate) on the initial launch, capture
-    // cline's own id from `--json` and store that instead — only the `resume`
-    // branch below would change. All flags take a value (or are bare booleans),
-    // so none can swallow the positional prompt, which stays last. `--worktree`
-    // (no arg) only makes sense on the initial launch — it auto-creates a fresh
-    // detached worktree.
+    // omitting them on resume would revert to cline's defaults.
+    //
+    // SESSION ID: cline's `--id` is RESUME-ONLY — passing a fresh id on the
+    // initial launch makes cline try to resume a non-existent session and skips
+    // the positional prompt (so the agent never starts the task). So the
+    // initial launch carries NO `--id` (cline mints its own id); pty-registry
+    // recovers that id from `cline history --json` (see cline-agent.ts) and
+    // stores it as the session's agentSessionId, which resume then passes back
+    // via `--id`. The prompt is the last positional (no flag can swallow it).
+    // `--worktree` (no arg, initial launch only) auto-creates a detached
+    // worktree under ~/.cline/worktrees/.
     buildArgs: ({
       sessionId,
       wrappedPrompt,
@@ -139,10 +137,10 @@ export const AGENT_CLIS: Record<AgentKind, AgentCli> = {
         CLINE_PROVIDER,
         ...model,
         ...thinking,
-        "--id",
-        sessionId,
       ];
-      if (resume) return common;
+      // Resume re-opens the captured conversation by id (no prompt).
+      if (resume) return [...common, "--id", sessionId];
+      // Initial launch: NO --id (cline creates the session); prompt last.
       const lead = worktree ? ["--worktree"] : [];
       return [...lead, ...common, wrappedPrompt];
     },
