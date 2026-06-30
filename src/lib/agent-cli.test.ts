@@ -183,23 +183,17 @@ describe("claude CLI", () => {
 describe("cline CLI", () => {
   const cline = AGENT_CLIS.cline;
 
-  test("initial launch opens the TUI, auto-approves, pins the id, prompt last", () => {
-    // No model/effort → neither -m nor --thinking is emitted.
+  test("initial launch opens the TUI, auto-approves, prompt last — NO --id", () => {
+    // cline's --id is resume-only; passing it on a fresh launch would skip the
+    // prompt. So the initial launch omits --id (cline mints its own id, which
+    // pty-registry captures from `cline history` afterward). No model/effort →
+    // neither -m nor --thinking is emitted.
     expect(
       cline.buildArgs({ sessionId: ID, wrappedPrompt: "do x", resume: false }),
-    ).toEqual([
-      "-i",
-      "--auto-approve",
-      "true",
-      "-P",
-      "cline-pass",
-      "--id",
-      ID,
-      "do x",
-    ]);
+    ).toEqual(["-i", "--auto-approve", "true", "-P", "cline-pass", "do x"]);
   });
 
-  test("initial launch passes the clinepass model and --thinking effort", () => {
+  test("initial launch passes the clinepass model and --thinking effort, still no --id", () => {
     expect(
       cline.buildArgs({
         sessionId: ID,
@@ -218,8 +212,6 @@ describe("cline CLI", () => {
       "cline-pass/glm-5.2",
       "--thinking",
       "high",
-      "--id",
-      ID,
       "do x",
     ]);
   });
@@ -245,13 +237,11 @@ describe("cline CLI", () => {
       "cline-pass/glm-5.2",
       "--thinking",
       "high",
-      "--id",
-      ID,
       "do x",
     ]);
   });
 
-  test("resume re-opens by id with no prompt, re-passing model and effort", () => {
+  test("resume re-opens the captured id with no prompt, re-passing model and effort", () => {
     expect(
       cline.buildArgs({
         sessionId: ID,
@@ -275,7 +265,7 @@ describe("cline CLI", () => {
     ]);
   });
 
-  test("resume never adds --worktree (it would create a second worktree)", () => {
+  test("resume passes --id but never --worktree (it would create a second worktree)", () => {
     expect(
       cline.buildArgs({
         sessionId: ID,

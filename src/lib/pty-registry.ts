@@ -21,6 +21,7 @@ import { publishSessionEvent } from "./board-events";
 import { serverBaseUrl } from "./server-config";
 import { scheduleProcessTermination } from "./process-terminate";
 import { AGENT_CLIS } from "./agent-cli";
+import { captureClineSessionId } from "./cline-agent";
 import {
   parseClaudeEffort,
   parseClaudeModel,
@@ -388,6 +389,24 @@ export function startSession(
     .set({ status: "running", endedAt: null, exitCode: null, activity: null })
     .where(eq(agentSessions.id, sessionDbId))
     .run();
+
+  // cline mints its own conversation id (its `--id` is resume-only), so the
+  // initial launch ran without one. Recover that id from `cline history` and
+  // store it as agentSessionId so a later resume can `--id` back into it.
+  // Fire-and-forget: never block the terminal opening; on capture failure the
+  // placeholder id stays and a resume just starts a fresh conversation.
+  if (session.agent === "cline" && !opts.resume) {
+    captureClineSessionId({ cwd: ticket.workingDir, prompt: wrapped })
+      .then((clineId) => {
+        if (clineId) {
+          db.update(agentSessions)
+            .set({ agentSessionId: clineId })
+            .where(eq(agentSessions.id, sessionDbId))
+            .run();
+        }
+      })
+      .catch(() => {});
+  }
 
   const publish = (status: SessionStatus, exitCode: number | null) =>
     publishForSession(session, status, exitCode);
