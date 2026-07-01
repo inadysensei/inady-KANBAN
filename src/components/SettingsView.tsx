@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { AUTO_SAVE_DELAY_MS, useAutoSave } from "@/lib/use-auto-save";
 import {
   deleteTaskTemplate,
   deleteTeamTemplate,
@@ -115,7 +116,6 @@ function TaskTemplateEditor({
   clineDefaults,
   teamTemplates,
   agents,
-  onSaved,
   onCancel,
 }: {
   template?: TaskTemplate;
@@ -126,9 +126,9 @@ function TaskTemplateEditor({
   clineDefaults: { effort: ClineEffort };
   teamTemplates: TeamTemplate[];
   agents: AgentKind[];
-  onSaved: () => void;
   onCancel: () => void;
 }) {
+  const [recordId, setRecordId] = useState(template?.id);
   const [name, setName] = useState(template?.name ?? "");
   const [title, setTitle] = useState(template?.title ?? "");
   const [description, setDescription] = useState(template?.description ?? "");
@@ -160,37 +160,43 @@ function TaskTemplateEditor({
     // Templates never carry a worktree choice — it's a per-launch opt-in only.
     worktree: false,
   });
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const savePayload = useMemo(
+    () => ({
+      id: recordId,
+      name,
+      title,
+      description,
+      workingDir,
+      agent: launch.agent,
+      mainPrompt: launch.prompt,
+      useAgentTeam: launch.useAgentTeam,
+      agentTeamMembers: launch.useAgentTeam
+        ? launch.agentTeamMembers.filter((m) => m.trim())
+        : [],
+      claudeModel: launch.agent === "claude" ? launch.claudeModel : null,
+      claudeEffort: launch.agent === "claude" ? launch.claudeEffort : null,
+      cursorModel: launch.agent === "cursor" ? launch.cursorModel : null,
+      clineModel: launch.agent === "cline" ? launch.clineModel : null,
+      clineEffort: launch.agent === "cline" ? launch.clineEffort : null,
+    }),
+    [recordId, name, title, description, workingDir, launch],
+  );
 
-  function save() {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await saveTaskTemplate({
-          id: template?.id,
-          name,
-          title,
-          description,
-          workingDir,
-          agent: launch.agent,
-          mainPrompt: launch.prompt,
-          useAgentTeam: launch.useAgentTeam,
-          agentTeamMembers: launch.useAgentTeam
-            ? launch.agentTeamMembers.filter((m) => m.trim())
-            : [],
-          claudeModel: launch.agent === "claude" ? launch.claudeModel : null,
-          claudeEffort: launch.agent === "claude" ? launch.claudeEffort : null,
-          cursorModel: launch.agent === "cursor" ? launch.cursorModel : null,
-          clineModel: launch.agent === "cline" ? launch.clineModel : null,
-          clineEffort: launch.agent === "cline" ? launch.clineEffort : null,
-        });
-        onSaved();
-      } catch (err) {
-        setError((err as Error).message);
-      }
-    });
-  }
+  const { error, pending } = useAutoSave(
+    savePayload,
+    async (payload) => {
+      const result = await saveTaskTemplate(payload);
+      if (!payload.id) setRecordId(result.id);
+    },
+    {
+      delayMs: AUTO_SAVE_DELAY_MS,
+      skip: (p) =>
+        !p.name.trim() ||
+        !p.title.trim() ||
+        !p.mainPrompt.trim() ||
+        !p.workingDir.trim(),
+    },
+  );
 
   return (
     <div className={cardClass("flex flex-col gap-3 p-4")}>
@@ -255,17 +261,10 @@ function TaskTemplateEditor({
         <button
           type="button"
           disabled={pending}
-          onClick={save}
-          className={buttonClass()}
-        >
-          {pending ? "Saving…" : "Save template"}
-        </button>
-        <button
-          type="button"
           onClick={onCancel}
           className={buttonClass({ variant: "secondary" })}
         >
-          Cancel
+          {pending ? "Saving…" : "Done"}
         </button>
       </div>
     </div>
@@ -274,35 +273,37 @@ function TaskTemplateEditor({
 
 function TeamTemplateEditor({
   template,
-  onSaved,
   onCancel,
 }: {
   template?: TeamTemplate;
-  onSaved: () => void;
   onCancel: () => void;
 }) {
+  const [recordId, setRecordId] = useState(template?.id);
   const [name, setName] = useState(template?.name ?? "");
   const [members, setMembers] = useState<string[]>(
     template ? parseMembers(template.members) : emptyTeamSlots(),
   );
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
 
-  function save() {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await saveTeamTemplate({
-          id: template?.id,
-          name,
-          members: members.filter((m) => m.trim()),
-        });
-        onSaved();
-      } catch (err) {
-        setError((err as Error).message);
-      }
-    });
-  }
+  const savePayload = useMemo(
+    () => ({
+      id: recordId,
+      name,
+      members: members.filter((m) => m.trim()),
+    }),
+    [recordId, name, members],
+  );
+
+  const { error, pending } = useAutoSave(
+    savePayload,
+    async (payload) => {
+      const result = await saveTeamTemplate(payload);
+      if (!payload.id) setRecordId(result.id);
+    },
+    {
+      delayMs: AUTO_SAVE_DELAY_MS,
+      skip: (p) => !p.name.trim(),
+    },
+  );
 
   return (
     <div className={cardClass("flex flex-col gap-3 p-4")}>
@@ -343,17 +344,10 @@ function TeamTemplateEditor({
         <button
           type="button"
           disabled={pending}
-          onClick={save}
-          className={buttonClass()}
-        >
-          {pending ? "Saving…" : "Save"}
-        </button>
-        <button
-          type="button"
           onClick={onCancel}
           className={buttonClass({ variant: "secondary" })}
         >
-          Cancel
+          {pending ? "Saving…" : "Done"}
         </button>
       </div>
     </div>
@@ -362,45 +356,58 @@ function TeamTemplateEditor({
 
 function RepositoryEditor({
   repository,
-  onSaved,
   onCancel,
 }: {
   repository?: Repository;
-  onSaved: () => void;
   onCancel: () => void;
 }) {
+  const [recordId, setRecordId] = useState(repository?.id);
   const [path, setPath] = useState(repository?.path ?? "");
-  const [error, setError] = useState<string | null>(null);
+  const [browseError, setBrowseError] = useState<string | null>(null);
   const [browsing, setBrowsing] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [browsePending, startBrowse] = useTransition();
+
+  const savePayload = useMemo(
+    () => ({ id: recordId, path }),
+    [recordId, path],
+  );
+
+  const { error: saveError, pending: savePending } = useAutoSave(
+    savePayload,
+    async (payload) => {
+      const trimmed = payload.path.trim();
+      if (!trimmed) return;
+      if (payload.id) {
+        await updateRepository(payload.id, trimmed);
+      } else {
+        const result = await addRepository(trimmed);
+        setRecordId(result.id);
+      }
+    },
+    {
+      delayMs: AUTO_SAVE_DELAY_MS,
+      enabled: !browsing,
+      skip: (p) => !p.path.trim(),
+    },
+  );
 
   function browse() {
-    setError(null);
+    setBrowseError(null);
     setBrowsing(true);
-    startTransition(async () => {
+    startBrowse(async () => {
       try {
         const result = await pickRepositoryDirectory();
         if (!("canceled" in result)) setPath(result.path);
       } catch (err) {
-        setError((err as Error).message);
+        setBrowseError((err as Error).message);
       } finally {
         setBrowsing(false);
       }
     });
   }
 
-  function save() {
-    setError(null);
-    startTransition(async () => {
-      try {
-        if (repository) await updateRepository(repository.id, path);
-        else await addRepository(path);
-        onSaved();
-      } catch (err) {
-        setError((err as Error).message);
-      }
-    });
-  }
+  const error = browseError ?? saveError;
+  const pending = browsePending || savePending;
 
   return (
     <div className={cardClass("flex flex-col gap-2 p-4")}>
@@ -431,18 +438,11 @@ function RepositoryEditor({
       <div className="flex gap-2">
         <button
           type="button"
-          disabled={pending || !path.trim()}
-          onClick={save}
-          className={buttonClass()}
-        >
-          {pending && !browsing ? "Saving…" : "Save"}
-        </button>
-        <button
-          type="button"
+          disabled={pending}
           onClick={onCancel}
           className={buttonClass({ variant: "secondary" })}
         >
-          Cancel
+          {pending ? "Saving…" : "Done"}
         </button>
       </div>
     </div>
@@ -451,30 +451,32 @@ function RepositoryEditor({
 
 function EditorEditor({
   editor,
-  onSaved,
   onCancel,
 }: {
   editor?: Editor;
-  onSaved: () => void;
   onCancel: () => void;
 }) {
+  const [recordId, setRecordId] = useState(editor?.id);
   const [name, setName] = useState(editor?.name ?? "");
   const [command, setCommand] = useState(editor?.command ?? "");
   const [isDefault, setIsDefault] = useState(editor?.isDefault ?? false);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
 
-  function save() {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await saveEditor({ id: editor?.id, name, command, isDefault });
-        onSaved();
-      } catch (err) {
-        setError((err as Error).message);
-      }
-    });
-  }
+  const savePayload = useMemo(
+    () => ({ id: recordId, name, command, isDefault }),
+    [recordId, name, command, isDefault],
+  );
+
+  const { error, pending } = useAutoSave(
+    savePayload,
+    async (payload) => {
+      const result = await saveEditor(payload);
+      if (!payload.id) setRecordId(result.id);
+    },
+    {
+      delayMs: AUTO_SAVE_DELAY_MS,
+      skip: (p) => !p.name.trim() || !p.command.trim(),
+    },
+  );
 
   return (
     <div className={cardClass("flex flex-col gap-3 p-4")}>
@@ -516,17 +518,10 @@ function EditorEditor({
         <button
           type="button"
           disabled={pending}
-          onClick={save}
-          className={buttonClass()}
-        >
-          {pending ? "Saving…" : "Save"}
-        </button>
-        <button
-          type="button"
           onClick={onCancel}
           className={buttonClass({ variant: "secondary" })}
         >
-          Cancel
+          {pending ? "Saving…" : "Done"}
         </button>
       </div>
     </div>
@@ -538,17 +533,14 @@ const NEW_TAG_COLOR = "#3b82f6";
 
 function TagEditor({
   tag,
-  onSaved,
   onCancel,
 }: {
   tag?: Tag;
-  onSaved: () => void;
   onCancel: () => void;
 }) {
+  const [recordId, setRecordId] = useState(tag?.id);
   const [name, setName] = useState(tag?.name ?? "");
   const [color, setColor] = useState(tag?.color ?? NEW_TAG_COLOR);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
 
   const colorValid = isValidTagColor(color);
   const trimmedName = name.trim();
@@ -556,17 +548,22 @@ function TagEditor({
   // a placeholder while the text field is mid-edit / invalid).
   const swatchColor = colorValid ? normalizeTagColor(color) : "#000000";
 
-  function save() {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await saveTag({ id: tag?.id, name, color });
-        onSaved();
-      } catch (err) {
-        setError((err as Error).message);
-      }
-    });
-  }
+  const savePayload = useMemo(
+    () => ({ id: recordId, name, color }),
+    [recordId, name, color],
+  );
+
+  const { error, pending } = useAutoSave(
+    savePayload,
+    async (payload) => {
+      const result = await saveTag(payload);
+      if (!payload.id) setRecordId(result.id);
+    },
+    {
+      delayMs: AUTO_SAVE_DELAY_MS,
+      skip: (p) => !isValidTagColor(p.color) || !p.name.trim(),
+    },
+  );
 
   return (
     <div className={cardClass("flex flex-col gap-3 p-4")}>
@@ -610,18 +607,11 @@ function TagEditor({
       <div className="flex gap-2">
         <button
           type="button"
-          disabled={pending || !colorValid || !trimmedName}
-          onClick={save}
-          className={buttonClass()}
-        >
-          {pending ? "Saving…" : "Save"}
-        </button>
-        <button
-          type="button"
+          disabled={pending}
           onClick={onCancel}
           className={buttonClass({ variant: "secondary" })}
         >
-          Cancel
+          {pending ? "Saving…" : "Done"}
         </button>
       </div>
     </div>
@@ -662,11 +652,18 @@ export default function SettingsView({
   const router = useRouter();
   const [model, setModel] = useState(claudeDefaults.model);
   const [effort, setEffort] = useState(claudeDefaults.effort);
-  const [defaultsError, setDefaultsError] = useState<string | null>(null);
-  const [defaultsPending, saveDefaultsTransition] = useTransition();
+  const claudeSavePayload = useMemo(() => ({ model, effort }), [model, effort]);
+  const { error: defaultsError, pending: defaultsPending } = useAutoSave(
+    claudeSavePayload,
+    saveClaudeDefaults,
+    { delayMs: 300 },
+  );
   const [tools, setTools] = useState(agentTools);
-  const [toolsError, setToolsError] = useState<string | null>(null);
-  const [toolsPending, saveToolsTransition] = useTransition();
+  const { error: toolsError, pending: toolsPending } = useAutoSave(
+    tools,
+    saveAgentTools,
+    { skip: (t) => !t.some((tool) => tool.enabled), delayMs: 300 },
+  );
   const noToolEnabled = !tools.some((t) => t.enabled);
   const enabledTemplateAgents = enabledAgents(agentTools);
   // Live (unsaved) enabled set: gates each tool's settings sections below, so
@@ -674,24 +671,12 @@ export default function SettingsView({
   // (vs. enabledTemplateAgents, which uses the SAVED list for the template form).
   const enabledNow = new Set(enabledAgents(tools));
 
-  function saveTools() {
-    setToolsError(null);
-    saveToolsTransition(async () => {
-      try {
-        await saveAgentTools(tools);
-        router.refresh();
-      } catch (err) {
-        setToolsError((err as Error).message);
-      }
-    });
-  }
-
   // Cursor models: the curated/ordered selection shown in the launch form. The
   // full catalog lives client-side (cursor-models.ts), so the "add" dropdown and
   // labels resolve without a prop.
   const [cursorModels, setCursorModels] = useState(cursorModelSelection);
-  const [cursorModelsError, setCursorModelsError] = useState<string | null>(null);
-  const [cursorModelsPending, saveCursorModelsTransition] = useTransition();
+  const { error: cursorModelsError, pending: cursorModelsPending } =
+    useAutoSave(cursorModels, saveCursorModels, { delayMs: 300 });
   const cursorModelsToAdd = availableCursorModelsToAdd(cursorModels);
   // What the task-template editor's launch form offers (the saved selection).
   const savedCursorChoices: CursorModelChoices = {
@@ -699,40 +684,16 @@ export default function SettingsView({
     default: defaultCursorModel(cursorModelSelection),
   };
 
-  function saveCursorModelSelection() {
-    setCursorModelsError(null);
-    saveCursorModelsTransition(async () => {
-      try {
-        await saveCursorModels(cursorModels);
-        router.refresh();
-      } catch (err) {
-        setCursorModelsError((err as Error).message);
-      }
-    });
-  }
-
   // Cline models: same curated/ordered-selection shape as cursor (the clinepass
   // catalog lives client-side in cline-models.ts).
   const [clineModels, setClineModels] = useState(clineModelSelection);
-  const [clineModelsError, setClineModelsError] = useState<string | null>(null);
-  const [clineModelsPending, saveClineModelsTransition] = useTransition();
+  const { error: clineModelsError, pending: clineModelsPending } =
+    useAutoSave(clineModels, saveClineModels, { delayMs: 300 });
   const clineModelsToAdd = availableClineModelsToAdd(clineModels);
   const savedClineChoices: ClineModelChoices = {
     options: clineModelOptions(clineModelSelection),
     default: defaultClineModel(clineModelSelection),
   };
-
-  function saveClineModelSelection() {
-    setClineModelsError(null);
-    saveClineModelsTransition(async () => {
-      try {
-        await saveClineModels(clineModels);
-        router.refresh();
-      } catch (err) {
-        setClineModelsError((err as Error).message);
-      }
-    });
-  }
 
   // Cline default effort: the board-level `--thinking` level new sessions seed
   // from (mirrors the Claude defaults; cline's model default rides the selection
@@ -740,38 +701,18 @@ export default function SettingsView({
   const [clineEffortDefault, setClineEffortDefault] = useState(
     clineDefaults.effort,
   );
-  const [clineDefaultsError, setClineDefaultsError] = useState<string | null>(
-    null,
+  const clineEffortPayload = useMemo(
+    () => ({ effort: clineEffortDefault }),
+    [clineEffortDefault],
   );
-  const [clineDefaultsPending, saveClineDefaultsTransition] = useTransition();
-
-  function saveClineDefaultEffort() {
-    setClineDefaultsError(null);
-    saveClineDefaultsTransition(async () => {
-      try {
-        await saveClineDefaults({ effort: clineEffortDefault });
-        router.refresh();
-      } catch (err) {
-        setClineDefaultsError((err as Error).message);
-      }
-    });
-  }
+  const { error: clineDefaultsError, pending: clineDefaultsPending } =
+    useAutoSave(clineEffortPayload, saveClineDefaults, { delayMs: 300 });
   const [dateFmt, setDateFmt] = useState(dateFormat);
-  const [dateFmtError, setDateFmtError] = useState<string | null>(null);
-  const [dateFmtPending, saveDateFmtTransition] = useTransition();
-
-  function saveDateFmt(next: DateFormat) {
-    setDateFmt(next);
-    setDateFmtError(null);
-    saveDateFmtTransition(async () => {
-      try {
-        await saveDateFormat(next);
-        router.refresh();
-      } catch (err) {
-        setDateFmtError((err as Error).message);
-      }
-    });
-  }
+  const { error: dateFmtError, pending: dateFmtPending } = useAutoSave(
+    dateFmt,
+    saveDateFormat,
+    { delayMs: 300 },
+  );
   const [editingTaskId, setEditingTaskId] = useState<string | "new" | null>(
     null,
   );
@@ -785,18 +726,6 @@ export default function SettingsView({
     null,
   );
   const [editingTagId, setEditingTagId] = useState<string | "new" | null>(null);
-
-  function saveDefaults() {
-    setDefaultsError(null);
-    saveDefaultsTransition(async () => {
-      try {
-        await saveClaudeDefaults({ model, effort });
-        router.refresh();
-      } catch (err) {
-        setDefaultsError((err as Error).message);
-      }
-    });
-  }
 
   const editingTask =
     editingTaskId && editingTaskId !== "new"
@@ -894,14 +823,7 @@ export default function SettingsView({
             </p>
           )}
           {toolsError && <p className="text-xs text-danger">{toolsError}</p>}
-          <button
-            type="button"
-            disabled={toolsPending || noToolEnabled}
-            onClick={saveTools}
-            className={buttonClass({ extra: "self-start" })}
-          >
-            {toolsPending ? "Saving…" : "Save AI tools"}
-          </button>
+          {toolsPending && <p className="text-xs text-muted">Saving…</p>}
         </div>
       </section>
 
@@ -942,14 +864,9 @@ export default function SettingsView({
           {defaultsError && (
             <p className="mt-2 text-xs text-danger">{defaultsError}</p>
           )}
-          <button
-            type="button"
-            disabled={defaultsPending}
-            onClick={saveDefaults}
-            className={buttonClass({ extra: "mt-3" })}
-          >
-            {defaultsPending ? "Saving…" : "Save defaults"}
-          </button>
+          {defaultsPending && (
+            <p className="mt-2 text-xs text-muted">Saving…</p>
+          )}
         </div>
       </section>
       )}
@@ -1060,14 +977,9 @@ export default function SettingsView({
           {cursorModelsError && (
             <p className="text-xs text-danger">{cursorModelsError}</p>
           )}
-          <button
-            type="button"
-            disabled={cursorModelsPending}
-            onClick={saveCursorModelSelection}
-            className={buttonClass({ extra: "self-start" })}
-          >
-            {cursorModelsPending ? "Saving…" : "Save cursor models"}
-          </button>
+          {cursorModelsPending && (
+            <p className="text-xs text-muted">Saving…</p>
+          )}
         </div>
       </section>
       )}
@@ -1178,14 +1090,9 @@ export default function SettingsView({
           {clineModelsError && (
             <p className="text-xs text-danger">{clineModelsError}</p>
           )}
-          <button
-            type="button"
-            disabled={clineModelsPending}
-            onClick={saveClineModelSelection}
-            className={buttonClass({ extra: "self-start" })}
-          >
-            {clineModelsPending ? "Saving…" : "Save cline models"}
-          </button>
+          {clineModelsPending && (
+            <p className="text-xs text-muted">Saving…</p>
+          )}
         </div>
       </section>
       )}
@@ -1218,14 +1125,9 @@ export default function SettingsView({
           {clineDefaultsError && (
             <p className="text-xs text-danger">{clineDefaultsError}</p>
           )}
-          <button
-            type="button"
-            disabled={clineDefaultsPending}
-            onClick={saveClineDefaultEffort}
-            className={buttonClass({ extra: "self-start" })}
-          >
-            {clineDefaultsPending ? "Saving…" : "Save cline default effort"}
-          </button>
+          {clineDefaultsPending && (
+            <p className="text-xs text-muted">Saving…</p>
+          )}
         </div>
       </section>
       )}
@@ -1240,7 +1142,7 @@ export default function SettingsView({
             <select
               value={dateFmt}
               disabled={dateFmtPending}
-              onChange={(e) => saveDateFmt(e.target.value as DateFormat)}
+              onChange={(e) => setDateFmt(e.target.value as DateFormat)}
               className={inputClass()}
             >
               {DATE_FORMATS.map((fmt) => (
@@ -1252,6 +1154,9 @@ export default function SettingsView({
           </label>
           {dateFmtError && (
             <p className="mt-2 text-xs text-danger">{dateFmtError}</p>
+          )}
+          {dateFmtPending && (
+            <p className="mt-2 text-xs text-muted">Saving…</p>
           )}
         </div>
       </section>
@@ -1275,12 +1180,12 @@ export default function SettingsView({
         </p>
         {editingTagId ? (
           <TagEditor
+            key={editingTagId ?? undefined}
             tag={editingTag}
-            onSaved={() => {
+            onCancel={() => {
               setEditingTagId(null);
               router.refresh();
             }}
-            onCancel={() => setEditingTagId(null)}
           />
         ) : (
           <ul className="flex flex-col gap-2">
@@ -1347,12 +1252,12 @@ export default function SettingsView({
         </p>
         {editingRepoId ? (
           <RepositoryEditor
+            key={editingRepoId ?? undefined}
             repository={editingRepo}
-            onSaved={() => {
+            onCancel={() => {
               setEditingRepoId(null);
               router.refresh();
             }}
-            onCancel={() => setEditingRepoId(null)}
           />
         ) : (
           <ul className="flex flex-col gap-2">
@@ -1414,12 +1319,12 @@ export default function SettingsView({
         </p>
         {editingEditorId ? (
           <EditorEditor
+            key={editingEditorId ?? undefined}
             editor={editingEditor}
-            onSaved={() => {
+            onCancel={() => {
               setEditingEditorId(null);
               router.refresh();
             }}
-            onCancel={() => setEditingEditorId(null)}
           />
         ) : (
           <ul className="flex flex-col gap-2">
@@ -1497,6 +1402,7 @@ export default function SettingsView({
         </div>
         {editingTaskId ? (
           <TaskTemplateEditor
+            key={editingTaskId ?? undefined}
             template={editingTask}
             workingDirs={workingDirs}
             claudeDefaults={claudeDefaults}
@@ -1505,11 +1411,10 @@ export default function SettingsView({
             clineDefaults={clineDefaults}
             teamTemplates={teamTemplates}
             agents={enabledTemplateAgents}
-            onSaved={() => {
+            onCancel={() => {
               setEditingTaskId(null);
               router.refresh();
             }}
-            onCancel={() => setEditingTaskId(null)}
           />
         ) : (
           <ul className="flex flex-col gap-2">
@@ -1566,12 +1471,12 @@ export default function SettingsView({
         </div>
         {editingTeamId ? (
           <TeamTemplateEditor
+            key={editingTeamId ?? undefined}
             template={editingTeam}
-            onSaved={() => {
+            onCancel={() => {
               setEditingTeamId(null);
               router.refresh();
             }}
-            onCancel={() => setEditingTeamId(null)}
           />
         ) : (
           <ul className="flex flex-col gap-2">
