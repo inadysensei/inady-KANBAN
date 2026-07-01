@@ -391,10 +391,11 @@ export function startSession(
     .run();
 
   // cline mints its own conversation id (its `--id` is resume-only), so the
-  // initial launch ran without one. Recover that id from `cline history` and
-  // store it as agentSessionId so a later resume can `--id` back into it.
-  // Fire-and-forget: never block the terminal opening; on capture failure the
-  // placeholder id stays and a resume just starts a fresh conversation.
+  // initial launch ran without one. Recover that id from cline's sessions
+  // database and store it as agentSessionId so a later resume can `--id` back
+  // into it. Fire-and-forget: never block the terminal opening; on capture
+  // failure the placeholder id stays and a resume just starts a fresh
+  // conversation.
   if (session.agent === "cline" && !opts.resume) {
     captureClineSessionId({ cwd: ticket.workingDir, prompt: wrapped })
       .then((clineId) => {

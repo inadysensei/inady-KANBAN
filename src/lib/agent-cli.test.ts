@@ -186,7 +186,7 @@ describe("cline CLI", () => {
   test("initial launch opens the TUI, auto-approves, prompt last — NO --id", () => {
     // cline's --id is resume-only; passing it on a fresh launch would skip the
     // prompt. So the initial launch omits --id (cline mints its own id, which
-    // pty-registry captures from `cline history` afterward). No model/effort →
+    // pty-registry captures from cline's sessions database afterward). No model/effort →
     // neither -m nor --thinking is emitted.
     expect(
       cline.buildArgs({ sessionId: ID, wrappedPrompt: "do x", resume: false }),
