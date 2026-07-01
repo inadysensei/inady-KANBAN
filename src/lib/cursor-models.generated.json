@@ -248,6 +248,46 @@
     "label": "GPT-5.5 Extra High Fast"
   },
   {
+    "id": "claude-sonnet-5-low",
+    "label": "Sonnet 5 1M Low"
+  },
+  {
+    "id": "claude-sonnet-5-medium",
+    "label": "Sonnet 5 1M Medium"
+  },
+  {
+    "id": "claude-sonnet-5-high",
+    "label": "Sonnet 5 1M"
+  },
+  {
+    "id": "claude-sonnet-5-xhigh",
+    "label": "Sonnet 5 1M Extra High"
+  },
+  {
+    "id": "claude-sonnet-5-max",
+    "label": "Sonnet 5 1M Max"
+  },
+  {
+    "id": "claude-sonnet-5-thinking-low",
+    "label": "Sonnet 5 1M Low Thinking"
+  },
+  {
+    "id": "claude-sonnet-5-thinking-medium",
+    "label": "Sonnet 5 1M Medium Thinking"
+  },
+  {
+    "id": "claude-sonnet-5-thinking-high",
+    "label": "Sonnet 5 1M Thinking"
+  },
+  {
+    "id": "claude-sonnet-5-thinking-xhigh",
+    "label": "Sonnet 5 1M Extra High Thinking"
+  },
+  {
+    "id": "claude-sonnet-5-thinking-max",
+    "label": "Sonnet 5 1M Max Thinking"
+  },
+  {
     "id": "claude-4.6-sonnet-medium",
     "label": "Sonnet 4.6 1M"
   },
@@ -364,16 +404,8 @@
     "label": "Opus 4.6 1M Thinking"
   },
   {
-    "id": "claude-4.6-opus-high-thinking-fast",
-    "label": "Opus 4.6 1M Thinking Fast"
-  },
-  {
     "id": "claude-4.6-opus-max-thinking",
     "label": "Opus 4.6 1M Max Thinking"
-  },
-  {
-    "id": "claude-4.6-opus-max-thinking-fast",
-    "label": "Opus 4.6 1M Max Thinking Fast"
   },
   {
     "id": "claude-4.5-opus-high",
@@ -516,43 +548,11 @@
     "label": "Kimi K2.5"
   },
   {
-    "id": "claude-fable-5-low",
-    "label": "Fable 5 1M Low (NO ZDR)"
+    "id": "glm-5.2-high",
+    "label": "GLM 5.2"
   },
   {
-    "id": "claude-fable-5-medium",
-    "label": "Fable 5 1M Medium (NO ZDR)"
-  },
-  {
-    "id": "claude-fable-5-high",
-    "label": "Fable 5 1M (NO ZDR)"
-  },
-  {
-    "id": "claude-fable-5-xhigh",
-    "label": "Fable 5 1M Extra High (NO ZDR)"
-  },
-  {
-    "id": "claude-fable-5-max",
-    "label": "Fable 5 1M Max (NO ZDR)"
-  },
-  {
-    "id": "claude-fable-5-thinking-low",
-    "label": "Fable 5 1M Low Thinking (NO ZDR)"
-  },
-  {
-    "id": "claude-fable-5-thinking-medium",
-    "label": "Fable 5 1M Medium Thinking (NO ZDR)"
-  },
-  {
-    "id": "claude-fable-5-thinking-high",
-    "label": "Fable 5 1M Thinking (NO ZDR)"
-  },
-  {
-    "id": "claude-fable-5-thinking-xhigh",
-    "label": "Fable 5 1M Extra High Thinking (NO ZDR)"
-  },
-  {
-    "id": "claude-fable-5-thinking-max",
-    "label": "Fable 5 1M Max Thinking (NO ZDR)"
+    "id": "glm-5.2-max",
+    "label": "GLM 5.2 Max"
   }
 ]
