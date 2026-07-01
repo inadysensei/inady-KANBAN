@@ -55,7 +55,7 @@ export type CreateAgentSessionInput = {
  *     (in the ticket's cwd), a locally-generated UUID for claude (pinned later
  *     via --session-id). cline can't pin an id (its --id is resume-only), so it
  *     gets a placeholder UUID here that pty-registry replaces with cline's own
- *     id once it's captured from `cline history` after launch.
+ *     id once it's captured from cline's sessions database after launch.
  *  2. INSERT an agent_sessions row (status='running').
  *  3. Auto-transition the ticket to 'doing' (this is the "execution started" moment).
  *  4. Return the DB id + conversation UUID so the client can open the terminal WebSocket.

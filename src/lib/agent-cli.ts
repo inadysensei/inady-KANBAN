@@ -114,7 +114,7 @@ export const AGENT_CLIS: Record<AgentKind, AgentCli> = {
     // initial launch makes cline try to resume a non-existent session and skips
     // the positional prompt (so the agent never starts the task). So the
     // initial launch carries NO `--id` (cline mints its own id); pty-registry
-    // recovers that id from `cline history --json` (see cline-agent.ts) and
+    // recovers that id from cline's sessions database (see cline-agent.ts) and
     // stores it as the session's agentSessionId, which resume then passes back
     // via `--id`. The prompt is the last positional (no flag can swallow it).
     // `--worktree` (no arg, initial launch only) auto-creates a detached
