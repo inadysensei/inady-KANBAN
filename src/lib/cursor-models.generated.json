@@ -140,6 +140,14 @@
     "label": "GPT-5.4 High Fast"
   },
   {
+    "id": "claude-fable-5-thinking-high",
+    "label": "Fable 5 1M Thinking (NO ZDR)"
+  },
+  {
+    "id": "claude-fable-5-thinking-xhigh",
+    "label": "Fable 5 1M Extra High Thinking (NO ZDR)"
+  },
+  {
     "id": "composer-2.5-fast",
     "label": "Composer 2.5 Fast"
   },
@@ -544,6 +552,10 @@
     "label": "GPT-5 Mini"
   },
   {
+    "id": "kimi-k2.7-code",
+    "label": "Kimi K2.7 Code"
+  },
+  {
     "id": "kimi-k2.5",
     "label": "Kimi K2.5"
   },
@@ -554,5 +566,37 @@
   {
     "id": "glm-5.2-max",
     "label": "GLM 5.2 Max"
+  },
+  {
+    "id": "claude-fable-5-low",
+    "label": "Fable 5 1M Low (NO ZDR)"
+  },
+  {
+    "id": "claude-fable-5-medium",
+    "label": "Fable 5 1M Medium (NO ZDR)"
+  },
+  {
+    "id": "claude-fable-5-high",
+    "label": "Fable 5 1M (NO ZDR)"
+  },
+  {
+    "id": "claude-fable-5-xhigh",
+    "label": "Fable 5 1M Extra High (NO ZDR)"
+  },
+  {
+    "id": "claude-fable-5-max",
+    "label": "Fable 5 1M Max (NO ZDR)"
+  },
+  {
+    "id": "claude-fable-5-thinking-low",
+    "label": "Fable 5 1M Low Thinking (NO ZDR)"
+  },
+  {
+    "id": "claude-fable-5-thinking-medium",
+    "label": "Fable 5 1M Medium Thinking (NO ZDR)"
+  },
+  {
+    "id": "claude-fable-5-thinking-max",
+    "label": "Fable 5 1M Max Thinking (NO ZDR)"
   }
 ]
